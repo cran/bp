@@ -6,7 +6,7 @@
 \usage{
 dip_calc(
   data,
-  sleep_int = NULL,
+  sleep_start_end = NULL,
   dip_thresh = 0.1,
   extreme_thresh = 0.2,
   inc_date = FALSE,
@@ -21,12 +21,12 @@ In the event of non-ABPM data (i.e. a data set without a corresponding \code{WAK
 \code{DATE_TIME} column \strong{must} be present in order to denote which times correspond to sleep and which
 times correspond to awake.}
 
-\item{sleep_int}{(optional) User-supplied sleep interval to indicate start and end time of
-the sleep interval of interest. Must only contain 2 values and must be 24-hour denoted integers
+\item{sleep_start_end}{(optional) User-supplied manual override to adjust sleep interval indicating indicate start and end time
+corresponding to the sleep interval of interest. Must only contain 2 values and must be 24-hour denoted integers
 
-Example: \code{sleep_int = c(22,5)} indicates a sleep period from 10pm - 5am.
+Example: \code{sleep_start_end = c(22,5)} indicates a sleep period from 10pm - 5am.
 
-\strong{NOTE:} If the \code{sleep_int} function argument is specified, and no \code{WAKE} column
+\strong{NOTE:} If the \code{sleep_start_end} function argument is specified, and no \code{WAKE} column
 exists, then awake/asleep indicators will be assigned according the the \code{DATE_TIME}
 column (which must exist). Otherwise, if \code{sleep_int} is not supplied, then the
 WAKE column will default to a sleep period between 11PM - 6AM as specified in the
@@ -36,9 +36,14 @@ Furthermore, the \code{sleep_int} argument
 will override the \code{WAKE} column, which may cause unintended consequences in the event that the
 data set already contains a \code{WAKE} column.}
 
-\item{dip_thresh}{Default threshold for normal "Dipping" set to 0.10 (i.e. 10\%)}
+\item{dip_thresh}{Default threshold for normal "Dipping" set to 0.10 (i.e. 10\%). This value represents the maximum
+percentage that BP can fall during sleep and be characterized as "Normal" nocturnal decline (dipping).
+Specifically, this category includes all dips between 0\% and this value.}
 
-\item{extreme_thresh}{Default threshold for "Extreme Dipping" set to 0.20 (i.e. 20\%) NOTE: dip_thresh cannot exceed extreme_thresh}
+\item{extreme_thresh}{Default threshold for "Extreme Dipping" set to 0.20 (i.e. 20\%). This value represents the maximum
+percentage that BP can fall during sleep and be characterized as "Extreme" nocturnal decline (dipping).
+Specifically, this category includes all dips between the Normal dipping threshold and this value.
+NOTE: dip_thresh cannot exceed extreme_thresh.}
 
 \item{inc_date}{Default to FALSE. Indicates whether or not to include the date in the grouping of
 the final output}
@@ -73,14 +78,14 @@ There is a "U-shaped" relationship that exists among the magnitude of nocturnal 
 extreme dippers and the non-dippers (including reverse dippers) are both more prone to mortality risk than normal dippers.
 }
 \examples{
-## Load hypnos_data
-data(hypnos_data)
+## Load bp_hypnos
+data(bp_hypnos)
 
-## Process hypnos_data
-hypnos_proc <- process_data(hypnos_data,
+## Process bp_hypnos
+hypnos_proc <- process_data(bp_hypnos,
                      sbp = 'syst',
                      dbp = 'diast',
-                     bp_datetime = 'date.time',
+                     date_time = 'date.time',
                      hr = 'hr',
                      pp = 'PP',
                      map = 'MaP',

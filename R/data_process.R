@@ -1,15 +1,24 @@
-
 #' Data Pre-Processor
 #'
 #' @description A helper function to assist in pre-processing the user-supplied
-#' input data for use with other functions.
-#' Typically, this function will process the data and be stored as another
-#' dataframe. This function ensures that the supplied data complies with every
-#' function within the \code{bp} package. See Vignette for further details.
+#' input data in a standardized format for use with other functions in the \code{bp} package.
+#' See Vignette for further details.
 #'
 #' @param data User-supplied dataset containing blood pressure data. Must
 #' contain data for Systolic blood pressure and Diastolic blood pressure at a
 #' minimum.
+#'
+#' @param bp_type Required argument specifying which of the three BP data types
+#' ("HBPM", "ABPM", or "AP") the input data is. Default \code{bp_type} set to "HBPM".
+#' This argument determines which processing steps are necessary to yield sensible
+#' output.
+#'
+#' @param ap (For AP data only) Required column name (character string) corresponding
+#' to continuous Arterial Pressure (AP) (mmHg). Note that this is a required argument
+#' so long as bp_type = "AP". Ensure that bp_type is set accordingly.
+#'
+#' @param time_elap (For AP data only) Column name corresponding to the time elapsed
+#' for the given AP waveform data.
 #'
 #' @param sbp Required column name (character string) corresponding to Systolic Blood
 #' Pressure (mmHg)
@@ -17,12 +26,21 @@
 #' @param dbp Required column name (character string) corresponding to Diastolic Blood
 #' Pressure (mmHg)
 #'
-#' @param bp_datetime Optional column name (character string) corresponding to Date/Time,
+#' @param date_time Optional column name (character string) corresponding to Date/Time,
 #' but HIGHLY recommended to supply if available.
+#'
+#' For DATE-only columns (with no associated time), leave date_time = NULL. DATE-only
+#' adjustments are automatic. Dates can be automatically calculated off DATE_TIME column
+#' provided that it is called "DATE_TIME" exactly.
 #'
 #' @param id Optional column name (character string) corresponding to subject ID. Typically
 #' needed for data corresponding to more than one subject. For one-subject datasets, ID
 #' will default to 1 (if ID column not found in dataset)
+#'
+#' @param group Optional column name (character string) corresponding to an additional
+#' grouping variable that can be used to further break down data. NOTE that this simply
+#' sets the column as "GROUP" so that other functions recognize which column to use as
+#' the grouping variable.
 #'
 #' @param wake Optional column name (character string) corresponding to sleep status. A
 #' WAKE value of 1 indicates that the subject is awake and 0 implies asleep.
@@ -45,82 +63,207 @@
 #' If not supplied, but DATE or DATE_TIME columns available, then DoW will be created
 #' automatically. DoW values must be abbreviated as such \code{c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")}
 #'
-#' @param ToD_int Optional vector that overrides the default interval for the Time-of-Day periods.
-#' By default, the Morning, Afternoon, Evening, and Night periods are set at 6, 12, 18, 0 respectively,
-#' where 0 corresponds to the 24th hour of the day (i.e. Midnight). By inputting a vector for the
-#' \code{ToD_int} function argument, the default period can be re-arranged accordingly.
+#' @param ToD_int Optional vector of length 4, acceptable values are from 0 to 23 in a an order corresponding to hour for Morning, Afternoon, Evening, Night). This vector allows to override the default interval for the Time-of-Day periods: if NULL, the Morning, Afternoon, Evening, and Night periods are set at 6, 12, 18, 0 respectively,
+#' where 0 corresponds to the 24th hour of the day (i.e. Midnight).
 #' For example, ToD_int = c(5, 13, 18, 23) would correspond to a period for
 #' Morning starting at 5:00 (until 13:00), Afternoon starting at 13:00 (until 18:00),
 #' Evening starting at 18:00 (until 23:00), and Night starting at 23:00 (until 5:00)
 #'
-#' @param sbp_stages_alt (Optional) Determines the lower and upper limits for each stage
-#' of systolic blood pressure (\code{SBP}). If supplied, the input must be a vector
-#' containing 7 integers that correspond to the limits of each stage. The default vector would be
-#' given by \code{c(80, 100, 120, 130, 140, 180, 200)} where:
-#' \itemize{
+#' @param eod Optional argument to adjust the delineation for the end of day (eod). The supplied value should be a character string with 4 characters representing the digits of 24-hour time, e.g. "1310" corresponds to 1:10pm. For individuals who
+#' do not go to bed early or work night-shifts, this argument adjusts the \code{DATE} column so that the days change at specified time. \code{eod = "0000"} means no change. \code{eod = "1130"} will adjust the date of the readings up to 11:30am to the previous date. \code{eod = "1230"} will adjust the date of the readings after 12:30pm to the next date.
 #'
-#'    \item Low - default: < 100 (specifically 80 - 100)
-#'    \item Normal - default: 100 - 120
-#'    \item Elevated - default: 120 - 130
-#'    \item Stage 1 - default: 130 - 140
-#'    \item Stage 2 - default: 140 - 180
-#'    \item Crisis - default: > 180 (specifically 180 - 200)
+#' @param data_screen Optional logical argument; default set to TRUE. Screens for extreme values in the data
+#' for both \code{SBP} and \code{DBP} according to Omboni, et al (1995) paper - Calculation of Trough:Peak
+#' Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure: Methodological Aspects
 #'
-#' }
+#' @param SUL Systolic Upper Limit (SUL). If \code{data_screen = TRUE}, then \code{SUL} sets the upper limit by which
+#' to exclude any \code{SBP} values that exceed this threshold. The default is set to 240 per Omboni, et al (1995)
+#' paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+#' Methodological Aspects
 #'
-#' @param dbp_stages_alt (Optional) Determines the lower and upper limits for each stage
-#' of diastolic blood pressure (\code{DBP}). If supplied, the input must be a vector
-#' containing 7 integers that correspond to the limits of each stage. The default vector would be
-#' given by \code{c(25, 60, 80, 85, 90, 120, 140)} where:
-#' \itemize{
+#' @param SLL Systolic Lower Limit (SLL). If \code{data_screen = TRUE}, then \code{SLL} sets the lower limit by which
+#' to exclude any \code{SBP} values that fall below this threshold. The default is set to 50 per Omboni, et al (1995)
+#' paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+#' Methodological Aspects
 #'
-#'    \item Low - default: < 60 (specifically 25 - 60)
-#'    \item Normal - default: 60 - 80
-#'    \item Elevated - default: 80 - 85
-#'    \item Stage 1 - default: 85 - 90
-#'    \item Stage 2 - default: 90 - 120
-#'    \item Crisis - default: > 120 (specifically 120 - 140)
+#' @param DUL Diastolic Upper Limit (DUL). If \code{data_screen = TRUE}, then \code{DUL} sets the upper limit by which
+#' to exclude any \code{DBP} values that exceed this threshold. The default is set to 140 per Omboni, et al (1995)
+#' paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+#' Methodological Aspects
 #'
-#' }
+#' @param DLL Diastolic Lower Limit (DLL). If \code{data_screen = TRUE}, then \code{DLL} sets the lower limit by which
+#' to exclude any \code{DBP} values that fall below this threshold. The default is set to 40 per Omboni, et al (1995)
+#' paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+#' Methodological Aspects
 #'
-#' @return A processed dataframe object that cooperates with every other
-#' function within the bp package - all column names and formats comply.
+#' @param HRUL Heart Rate Upper Limit (HRUL). If \code{data_screen = TRUE}, then \code{HRUL} sets the upper limit
+#' by which to exclude any \code{HR} values that exceed this threshold. The default is set to 220 per the upper limit
+#' of the common max heart rate formula: 220 - age
+#'
+#' see https://www.cdc.gov/physicalactivity/basics/measuring/heartrate.htm
+#'
+#' @param HRLL Heart Rate Upper Limit (HRUL). If \code{data_screen = TRUE}, then \code{HRUL} sets the upper limit
+#' by which to exclude any \code{HR} values that exceed this threshold. The default is set to 27 per Guinness
+#' World Records - lowest heart rate (https://www.guinnessworldrecords.com/world-records/lowest-heart-rate)
+#'
+#' @param inc_low Optional logical argument dictating whether or not to include the "Low" category for BP
+#' classification column (and the supplementary SBP/DBP Category columns). Default set to TRUE.
+#'
+#' @param inc_crisis Optional logical argument dictating whether or not to include the "Crisis" category for BP
+#' classification column (and the supplementary SBP/DBP Category columns). Default set to TRUE.
+#'
+#' @param agg Optional argument specifying whether or not to aggregate the data based on the amount of time
+#' between observations. If \code{agg = TRUE} then any two (or more) observations within the amount of
+#' time alloted by the agg_thresh argument will be averaged together.
+#'
+#' @param agg_thresh Optional argument specifying the threshold of how many minutes can pass between readings
+#' (observations) and still be considered part of the same sitting. The default is set to 3 minutes. This implies
+#' that if two or more readings are within 3 minutes of each other, they will be averaged together (if agg is
+#' set to TRUE).
+#'
+#' @param collapse_df Optional argument that collapses the dataframe to eliminate repeating rows after
+#' aggregation.
+#'
+#' @param dt_fmt Optional argument that specifies the input date/time format (dt_fmt). Default set to "ymd HMS"
+#' but can take on any format specified by the lubridate package.
+#'
+#' @param chron_order Optional argument that specifies whether to order the data in chronological (Oldest
+#' dates & times at the top / first) or reverse chronological order (Most recent dates & times at the top / first).
+#' TRUE refers to chronological order; FALSE refers to reverse chronological order. The default is set to
+#' FALSE (i.e. most recent observations listed first in the dataframe).
+#'
+#' See https://lubridate.tidyverse.org/reference/parse_date_time.html for more details.
+#'
+#' @param tz Optional argument denoting the respective time zone. Default time zone set to "UTC". See
+#' Use \code{OlsonNames()} for a complete listing of all available time zones that can be used in this
+#' argument.
+#'
+#' @return A processed dataframe object with standardized column names and formats to use with the rest of bp package functions. The following standardized column names are used throughout
+#' \item{BP_TYPE}{One of AP, HBPM or ABPM}
+#' \item{ID}{Subject ID}
+#' \item{SBP}{Systolic Blood Pressure}
+#' \item{DBP}{Diastolic Blood Pressure}
+#' \item{SBP_CATEGORY}{Ordinal, SBP characterization into "Low" < "Normal"<"Elevated"<"Stage 1"< "Stage 2" < "Crisis". "Low" is not included if \code{inc_low = FALSE}. "Crisis" is not included if \code{inc_crisis = FALSE}.}
+#' \item{DBP_CATEGORY}{Ordinal, DBP characterization into "Low" < "Normal"<"Elevated"<"Stage 1"< "Stage 2" < "Crisis". "Low" is not included if \code{inc_low = FALSE}. "Crisis" is not included if \code{inc_crisis = FALSE}.}
+#' \item{BP_CLASS}{Blood pressure categorization based on paired values (SBP, DBP) into one of the 8 stages according to Lee et al. 2020. See \code{\link{bp_scatter}}}
+#' \item{HR}{Heart Rate}
+#' \item{MAP}{Mean Arterial Pressure}
+#' \item{PP}{Pulse Pressure, SBP-DBP}
+#' \item{DATE_TIME}{Date and time in POSIXct format}
+#' \item{DATE}{Date only in Date format}
+#' \item{MONTH}{Month, integer from 1 to 12}
+#' \item{DAY}{Day, integer from 1 to 31}
+#' \item{YEAR}{Four digit year}
+#' \item{DAY_OF_WEEK}{Ordinal, with "Sun"<"Mon"<"Tue"<"Wed"<"Thu"<"Fri"<"Sat"}
+#' \item{TIME}{Time in character format}
+#' \item{HOUR}{Integer, from 0 to 23}
+#' \item{TIME_OF_DAY}{One of "Morning", "Afternoon", "Evening" or "Night"}
+#'
+#' @references
+#' Lee H, Yano Y, Cho SMJ, Park JH, Park S, Lloyd-Jones DM, Kim HC. Cardiovascular risk of isolated
+#' systolic or diastolic hypertension in young adults. \emph{Circulation}. 2020; 141:1778–1786.
+#' \doi{10.1161/CIRCULATIONAHA.119.044838}
+#'
+#' Omboni, S., Parati, G*., Zanchetti, A., Mancia, G. Calculation of trough: peak ratio of
+#' antihypertensive treatment from ambulatory blood pressure: methodological aspects
+#' \emph{Journal of Hypertension}. October 1995 - Volume 13 - Issue 10 - p 1105-1112
+#' \doi{10.1097/00004872-199510000-00005}
+#'
+#' Unger, T., Borghi, C., Charchar, F., Khan, N. A., Poulter, N. R., Prabhakaran, D., ... & Schutte,
+#' A. E. (2020). 2020 International Society of Hypertension global hypertension practice guidelines.
+#' \emph{Hypertension}, 75(6), 1334-1357.
+#' \doi{10.1161/HYPERTENSIONAHA.120.15026}
+#'
 #' @export
 #'
 #' @examples
-#' # Load hypnos_data
-#' data("hypnos_data")
+#' # Load bp_hypnos
+#' data("bp_hypnos")
 #'
-#' # Process data for hypnos_data
-#' hyp_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
-#' id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
+#' # Process data for bp_hypnos
+#' hypnos_proc <- process_data(bp_hypnos,
+#'                               bp_type = 'abpm',
+#'                               sbp = 'syst',
+#'                               dbp = 'diast',
+#'                               date_time = 'date.time',
+#'                               hr = 'hr',
+#'                               pp = 'PP',
+#'                               map = 'MaP',
+#'                               rpp = 'Rpp',
+#'                               id = 'id',
+#'                               visit = 'Visit',
+#'                               wake = 'wake',
+#'                               data_screen = FALSE)
 #'
-#' hyp_proc
+#' hypnos_proc
+#'
 #'
 #' # Load bp_jhs data
 #' data("bp_jhs")
 #'
 #' # Process data for bp_jhs
-#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
-#' hr = "Pulse.bpm.")
+#' # Note that bp_type defaults to "hbpm" and is therefore not specified
+#' jhs_proc <- process_data(bp_jhs,
+#'                          sbp = "Sys.mmHg.",
+#'                          dbp = "Dias.mmHg.",
+#'                          date_time = "DateTime",
+#'                          hr = "Pulse.bpm.")
 #'
 #' jhs_proc
 #'
 process_data <- function(data,
-                         sbp = NULL,
-                         dbp = NULL,
-                         bp_datetime = NULL,
-                         id = NULL,
-                         wake = NULL,
-                         visit = NULL,
-                         hr = NULL,
-                         pp = NULL,
-                         map = NULL,
-                         rpp = NULL,
-                         DoW = NULL,
-                         ToD_int = NULL,
-                         sbp_stages_alt = NULL,
-                         dbp_stages_alt = NULL){
+
+                             # Home Blood Pressure Monitor (HBPM) | Ambulatory Blood Pressure Monitor (ABPM) | Arterial Pressure (AP)
+                             bp_type = c("hbpm", "abpm", "ap"),
+
+                             # For AP data
+                             ap = NULL,
+                             time_elap = NULL,
+
+                             # For all other data (HBPM, ABPM)
+                             sbp = NULL,
+                             dbp = NULL,
+                             date_time = NULL,
+                             id = NULL,
+                             group = NULL,
+                             wake = NULL,
+                             visit = NULL,
+                             hr = NULL,
+                             pp = NULL,
+                             map = NULL,
+                             rpp = NULL,
+
+
+                             # Options
+                             DoW = NULL,
+                             ToD_int = NULL,
+                             eod = NULL,
+                             data_screen = TRUE,
+                             SUL = 240,
+                             SLL = 50,
+                             DUL = 140,
+                             DLL = 40,
+                             HRUL = 220,
+                             HRLL = 27,
+                             inc_low = TRUE,
+                             inc_crisis = TRUE,
+                             agg = FALSE,
+                             agg_thresh = 3,
+                             collapse_df = FALSE,
+                             dt_fmt = "ymd HMS",
+                             chron_order = FALSE,
+                             tz = "UTC"){
+
+
+  # Prepare all variables used via dplyr
+  SBP = DBP = HR = SBP_Category = DBP_Category = TIME_OF_DAY = BP_CLASS = NULL
+  rm(list = c("SBP", "DBP", "HR", "SBP_Category", "DBP_Category", "TIME_OF_DAY", "BP_CLASS"))
+
+
+
+  # Match BP Type: Home Blood Pressure Monitor (HBPM) | Ambulatory Blood Pressure Monitor (ABPM) | Arterial Pressure (AP)
+  bp_type <- tolower(bp_type)
+  bp_type <- toupper( match.arg(bp_type) )
 
 
   # Ensure that data is either data.frame or matrix
@@ -140,597 +283,156 @@ process_data <- function(data,
   }
 
 
-  # Convert all column names to upper case for consistency
+  # Convert to data frame
   if(!is.data.frame(data)){
     stop('Error: did not convert to data frame\n')
   }
 
+  # Convert all column names to upper case for consistency
   colnames(data) <- toupper(colnames(data))
 
-  # Throw error if SBP and DBP columns aren't specified
-  if(is.null(sbp) | is.null(dbp)){
 
-    stop('Both "SBP" and "DBP" column names must be specified.\n')
+
+  # ************************************************************************************************************ #
+
+
+  # Arterial Pressure
+  if(bp_type == "AP"){
+
+    # Adjust AP Values
+    data <- ap_adj(data = data, ap = ap)
+
+    # Time Adjustment - Numeric Values representing a fraction of time that has elapsed (i.e. 0.25 minutes, 1.75 seconds, etc)
+    # This column is typically the sampling rate column
+    data <- time_adj(data = data, time_elap = time_elap)
+
+    # ID
+    data <- id_adj(data = data, id = id)
+
+    # Group
+    data <- group_adj(data = data, group = group)
+
+    # Create column indicating blood pressure type (bp_type)
+    data$BP_TYPE <- bp_type
 
   }
 
 
+  # ************************************************************************************************************ #
 
 
-  # Systolic BP (SBP)
-  if(is.character(sbp)){
+  if(toupper(bp_type) == "ABPM" | toupper(bp_type) == "HBPM"){
 
-    if(toupper(sbp) %in% colnames(data) == FALSE){
 
-      warning('Could not find user-defined SBP argument name in dataset. \ni.e. for example, if user improperly defines sbp = "syst" but that column name does not exist in the dataset, \nthen there will be no matches for "syst". \nCheck spelling of SBP argument.\n')
+        # Throw error if SBP and DBP columns aren't specified
+        if(is.null(sbp) | is.null(dbp)){
 
-      if(length(grep(paste("\\bSBP\\b", sep = ""), names(data))) == 1){
-
-        stop('Fix user-defined argument name for SBP. \nNote: A column in the dataset DOES match the name "SBP": \nif this is the correct column, indicate as such in function argument. \ni.e. sbp = "SBP" \n ')
-
-      }
-
-    }else{
-
-      col_idx <- grep(paste("\\b",toupper(sbp),"\\b", sep = ""), names(data))
-      data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
-
-      if(colnames(data)[1] != "SBP"){
-
-        colnames(data)[1] <- "SBP"
-        data$SBP <- as.numeric(data$SBP)
-      }
-    }
-  } else {
-    stop('User-defined SBP name must be character.\n')
-  }# if working with numeric below, remove this bracket
-
-
-
-
-
-  # Diastolic BP (DBP)
-  if(is.character(dbp)){
-
-    if(toupper(dbp) %in% colnames(data) == FALSE){
-
-      warning('User-defined DBP name does not match column name of supplied dataset. \ni.e. for example, if user improperly defines dbp = "diast" but there is no column name in the dataset, \nthen there will be no matches for "diast". \nCheck spelling of DBP argument.\n')
-
-      if(length(grep(paste("\\bDBP\\b", sep = ""), names(data))) == 1){
-
-        stop('Fix user-defined argument name for DBP. \nNote: A column in the dataset DOES match the name "DBP": \nif this is the correct column, indicate as such in function argument. \ni.e. sbp = "DBP" \n ')
-
-      }
-    }else{
-
-      col_idx <- grep(paste("\\b",toupper(dbp),"\\b", sep = ""), names(data))
-      data <- data[, c(1, col_idx, (2:ncol(data))[-col_idx+1])]
-
-      if(colnames(data)[2] != "DBP"){
-
-        colnames(data)[2] <- "DBP"
-        data$DBP <- as.numeric(data$DBP)
-      }
-    }
-  } else {
-    stop('User-defined DBP name must be character.\n')
-  }
-
-
-
-
-  # Pulse Pressure
-  if(is.null(pp)){
-
-    if(length(grep(paste("\\bPP\\b", sep = ""), names(data))) == 0){
-
-      data$PP <- data$SBP - data$DBP
-      message('No PP column found. Automatically generated from SBP and DBP columns.\n')
-
-    }
-
-    col_idx <- grep(paste("\\bPP\\b", sep = ""), names(data))
-    colnames(data)[col_idx] <- "PP"
-    data <- data[ , c(1:2, col_idx, (3:(ncol(data)))[-col_idx + 2])]
-
-    data$PP <- as.numeric(data$PP)
-
-  }else if(is.character(pp)){ # if character (i.e. by name)
-
-    if(toupper(pp) %in% colnames(data) == FALSE){ # is pp argument found in data colnames
-
-      stop('User-defined PP name does not match column name of supplied dataset\n')
-
-    }else{
-
-      col_idx <- grep(paste("\\b",toupper(pp),"\\b", sep = ""), names(data))
-      colnames(data)[col_idx] <- "PP"
-      data <- data[, c(1:2, col_idx, (3:ncol(data))[-col_idx+2])]
-
-      data$PP <- as.numeric(data$PP)
-    }
-  } else {
-
-    stop('User-defined PP name must be character.\n')
-  }
-
-
-
-
-
-
-  # Heart Rate
-  if(is.null(hr)){
-
-    if(length(grep(paste("\\bHR\\b", sep = ""), names(data))) == 1){
-
-      warning('HR column found in data. \nIf this column corresponds to Heart Rate, \nuse hr = "HR" in the function argument.\n')
-
-    }
-
-  } else if(is.character(hr)){
-
-    if(toupper(hr) %in% colnames(data) == FALSE){
-
-      stop('User-defined HR name does not match column name of supplied dataset\n')
-
-    }else{
-
-      col_idx <- grep(paste("\\b",toupper(hr),"\\b", sep = ""), names(data))
-      colnames(data)[col_idx] <- "HR"
-      data <- data[, c(1:3, col_idx, (4:ncol(data))[-col_idx+3])]
-      data$HR <- as.numeric(data$HR)
-    }
-  } else {
-    stop('User-defined HR name must be character.\n')
-  }
-
-
-
-
-
-
-  # Rate Pulse Product
-  if(is.null(rpp)){
-
-    # Try to find "RPP" column in data: if found, length is 1 (a number), if not found, length is 0 (i.e. logical(0) )
-    if(length(grep(paste("\\bRPP\\b", sep = ""), names(data))) == 1){
-
-      warning('"RPP" argument not specified in function, but "RPP" column found in data. \n Ensure that the "RPP" column in the data is not the desired column.')
-
-    } else if( (length(grep(paste("\\bRPP\\b", sep = ""), names(data))) == 0) & (length(grep(paste("\\bHR\\b", sep = ""), names(data))) == 1)){
-
-      data$RPP <- data$SBP * data$HR
-      data$RPP <- as.numeric(data$RPP)
-
-      hr_idx <- grep(paste("\\bHR\\b", sep = ""), names(data))
-      rpp_idx <- grep(paste("\\bRPP\\b", sep = ""), names(data))
-      data <- data[, c(1:hr_idx, rpp_idx, ((hr_idx+1):ncol(data))[-rpp_idx+hr_idx])]
-
-      message('No RPP column found. Automatically generated from SBP and HR columns.\n')
-    }
-
-  }else if( (toupper(rpp) %in% colnames(data)) == FALSE){
-
-    stop('User-defined RPP name does not match column name of supplied dataset\n')
-
-  }else if( (length(grep(paste("\\bHR\\b", sep = ""), names(data))) == 1) & (toupper(rpp) %in% colnames(data)) ){ # HR column is present and in position 4
-
-    col_idx <- grep(paste("\\b",toupper(rpp),"\\b", sep = ""), names(data))
-    colnames(data)[col_idx] <- "RPP"
-    data <- data[, c(1:4, col_idx, (5:ncol(data))[-col_idx+4])]
-
-  }else if( (length(grep(paste("\\bHR\\b", sep = ""), names(data))) == 0) & (toupper(rpp) %in% colnames(data)) ){ # HR column is NOT present
-
-    col_idx <- grep(paste("\\b",toupper(rpp),"\\b", sep = ""), names(data))
-    colnames(data)[col_idx] <- "RPP"
-    data <- data[, c(1:3, col_idx, (4:ncol(data))[-col_idx+3])]
-
-  }
-
-
-
-
-
-  # Mean Arterial Pressure
-  if(is.null(map)){
-
-    if(length(grep(paste("\\bMAP\\b", sep = ""), names(data))) == 0){
-
-      data$MAP <- (1/3) * data$SBP + (2/3) * data$DBP
-      message('No MAP column found. Automatically generated from SBP and DBP columns.\n')
-
-      col_idx <- grep(paste("\\bMAP\\b", sep = ""), names(data))
-      colnames(data)[col_idx] <- "MAP"
-      data <- data[, c(1:2, col_idx, (3:ncol(data))[-col_idx+2])]
-
-      data$MAP <- as.numeric(data$MAP)
-
-    }else if(length(grep(paste("\\bMAP\\b", sep = ""), names(data))) == 1){
-
-      warning('MAP column found in data. \nIf this column corresponds to Mean Arterial Pressure, \nuse map = "MAP" in the function argument.\n')
-
-    }
-  } else if(toupper(map) %in% colnames(data) == FALSE){
-
-    stop('User-defined MAP name does not match column name of supplied dataset\n')
-
-  } else {
-
-    col_idx <- grep(paste("\\b",toupper(map),"\\b", sep = ""), names(data))
-    colnames(data)[col_idx] <- "MAP"
-    data <- data[, c(1:2, col_idx, (3:ncol(data))[-col_idx+2])]
-
-  }
-
-
-
-
-
-  # Wake (1: Awake | 0: Asleep)
-  if(!is.null(wake)){
-
-    if(toupper(wake) %in% colnames(data) == FALSE){
-
-      stop('User-defined ID name does not match column name of supplied dataset\n')
-
-    }
-
-    col_idx <- grep(paste("\\b",toupper(wake),"\\b", sep = ""), names(data))
-    colnames(data)[col_idx] <- "WAKE"
-
-    if(length(unique(data$WAKE)) > 2){
-
-      warning('Ignoring wake argument. Wake column must only contain 2 unique values corresponding to awake or asleep status. \nTypically, these are denoted as 1 for Awake and 0 for Asleep.\n')
-
-    }else{
-
-      data$WAKE <- as.integer(data$WAKE) # coerce to integers
-
-      # Assuming there are only two unique values, move column to beginning of df
-      data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
-
-    }
-  }
-
-
-
-
-
-
-  # Visit
-  if(!is.null(visit)){
-
-    if(toupper(visit) %in% colnames(data) == FALSE){
-
-      stop('User-defined VISIT name does not match column name of supplied dataset\n')
-
-    } else {
-
-      col_idx <- grep(paste("\\b",toupper(visit),"\\b", sep = ""), names(data))
-      colnames(data)[col_idx] <- "VISIT"
-
-      data$VISIT <- as.integer(data$VISIT)
-      data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
-
-    }
-
-    # if( length( unique(data$VISIT) ) > 1){
-    #
-    #   tmp <- data %>%
-    #     group_by(ID, VISIT) %>%
-    #     select(SBP, DBP) %>%
-    #     dplyr::mutate(
-    #       first_SBP = dplyr::first(SBP),
-    #       first_DBP = dplyr::first(DBP)
-    #     ) %>%
-    #     mutate( tmp = SBP - first_SBP ) %>%
-    #     select(-first_SBP)
-    #
-    # ############
-    #   ##############
-    #   ############
-    #   }
-
-  }
-
-
-  # Prepare all variables used via dplyr
-  SBP_Category = DBP_Category = Time_of_Day = NULL
-  rm(list = c(SBP_Category, DBP_Category, Time_of_Day))
-
-
-  # Date & Time (DateTime object)
-  if(!is.null(bp_datetime)){
-
-    if(toupper(bp_datetime) %in% colnames(data) == FALSE){
-
-      stop('User-defined bp_datetime name does not match column name within supplied dataset\n')
-
-    } else {
-
-      col_idx <- grep(paste("\\b",toupper(bp_datetime),"\\b", sep = ""), names(data))
-      colnames(data)[col_idx] <- "DATE_TIME"
-      data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
-
-      data$DATE_TIME <- as.POSIXct(data$DATE_TIME, tz = "UTC") # coerce to proper time format
-
-
-      # Time of Day
-      if(is.null(ToD_int)){
-
-        # Assume --> Night: 0 - 6, Morning: 6 - 12, Afternoon: 12 - 18, Evening: 18 - 24
-        data <- data %>% dplyr::mutate(Time_of_Day =
-                                         dplyr::case_when(lubridate::hour(DATE_TIME) >= 0  & lubridate::hour(DATE_TIME) < 6  ~ "Night",
-                                                          lubridate::hour(DATE_TIME) >= 6  & lubridate::hour(DATE_TIME) < 12 ~ "Morning",
-                                                          lubridate::hour(DATE_TIME) >= 12 & lubridate::hour(DATE_TIME) < 18 ~ "Afternoon",
-                                                          lubridate::hour(DATE_TIME) >= 18 & lubridate::hour(DATE_TIME) < 24 ~ "Evening",))
-
-      # ToD_int should be a vector that contains the starting hour for Morning, Afternoon, Evening, Night in that order
-      }else {
-
-      if(!is.vector(ToD_int)){
-
-        warning('ToD_int must be of type vector. Coerced input to vector.')
-        ToD_int <- as.vector(ToD_int)
-
-      }else if( length(ToD_int) != 4 ){
-
-        stop('Time of Day Interval (ToD_int) must only contain 4 numbers corresponding to the start of the Morning, Afternoon, Evening, and Night periods.')
-
-      }else if( any(ToD_int > 24) == TRUE ){
-
-        stop('Time of Day Interval (ToD_int) must only lie within the 0 - 24 hour interval. Use 24-hour time.')
-
-      }else if( any( duplicated( ToD_int ) ) == TRUE ){
-
-        stop('Cannot have overlapping / duplicate values within the ToD interval.')
-
-      }else if( ToD_int[1] == 24 ){
-
-        ToD_int[1] <- 0
-
-      }else if( ToD_int[length(ToD_int)] == 24 ){
-
-        ToD_int[length(ToD_int)] <- 0
-
-      }else if( utils::head(ToD_int, 1) == utils::tail(ToD_int, 1) ){
-
-          stop('Same starting and ending Time of Day interval values. Coerced ending value to next hour.')
-
-      }else if( all(ToD_int[2:3] == cummax(ToD_int[2:3])) == FALSE ){
-
-        stop('values within interval must be increasing for the Morning and Afternoon periods (the second and third values in the interval).')
-
-      }
-
-      tmp <- c(ToD_int, ToD_int[1])
-      difftmp <- diff(tmp)
-      difftmp[which(difftmp < 0)] <- (24 - tmp[which(difftmp < 0)]) + tmp[which(difftmp < 0)+1]
-      testval <- sum(difftmp)
-
-      if(testval > 24){
-        stop('Invalid interval for Time of Day. Ensure that hours do not overlap each other and are consistent within a 24 hour period.')
-        }
-
-      if( (ToD_int[1] < ToD_int[2]) & (ToD_int[3] < ToD_int[4]) ){
-
-        data <- data %>% dplyr::mutate(Time_of_Day =
-                         dplyr::case_when(lubridate::hour(DATE_TIME) >= ToD_int[4] | lubridate::hour(DATE_TIME) < ToD_int[1]  ~ "Night",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[1] & lubridate::hour(DATE_TIME) < ToD_int[2] ~ "Morning",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[2] & lubridate::hour(DATE_TIME) < ToD_int[3] ~ "Afternoon",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[3] & lubridate::hour(DATE_TIME) < ToD_int[4] ~ "Evening"))
-
-      }else if( (ToD_int[1] > ToD_int[2]) & (ToD_int[3] < ToD_int[4]) ){
-
-        data <- data %>% dplyr::mutate(Time_of_Day =
-                         dplyr::case_when(lubridate::hour(DATE_TIME) >= ToD_int[4] & lubridate::hour(DATE_TIME) < ToD_int[1]  ~ "Night",
-                                        ((lubridate::hour(DATE_TIME) >= ToD_int[1] & lubridate::hour(DATE_TIME) < 24)) | (lubridate::hour(DATE_TIME) < ToD_int[2]) ~ "Morning",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[2] & lubridate::hour(DATE_TIME) < ToD_int[3] ~ "Afternoon",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[3] & lubridate::hour(DATE_TIME) < ToD_int[4] ~ "Evening",))
-
-      }else if( (ToD_int[1] < ToD_int[2]) & (ToD_int[3] > ToD_int[4]) ){
-
-        data <- data %>% dplyr::mutate(Time_of_Day =
-                         dplyr::case_when(lubridate::hour(DATE_TIME) >= ToD_int[4] & lubridate::hour(DATE_TIME) < ToD_int[1]  ~ "Night",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[1] & lubridate::hour(DATE_TIME) < ToD_int[2] ~ "Morning",
-                                          lubridate::hour(DATE_TIME) >= ToD_int[2] & lubridate::hour(DATE_TIME) < ToD_int[3] ~ "Afternoon",
-                                        ((lubridate::hour(DATE_TIME) >= ToD_int[3]) & (lubridate::hour(DATE_TIME) < 24)) | (lubridate::hour(DATE_TIME) < ToD_int[4]) ~ "Evening"))
-
-      }
-
-
-      }
-    }
-  }
-
-
-
-
-
-
-  # Date-Only
-
-  # DATE column identified in dataset
-  if(length(grep("^DATE$", names(data))) == 1){
-
-        # If DATE column found
-
-        # Coerce to Date type
-        if( inherits(data[,grep("^DATE$", names(data))], "Date") == FALSE ){
-
-          message('NOTE: DATE column found in data and coerced to as.Date() format.\n')
-          data[,grep("^DATE$", names(data))] <- as.Date(data[,grep("^DATE$", names(data))])
+          stop('Both "SBP" and "DBP" column names must be specified.\n')
 
         }
 
-        # DATE_TIME column AND identified DATE column present
-        if(length(grep("^DATE_TIME$", names(data))) == 1){
 
-          # If applicable, Check that all date values of the identified date column match the date_time values in as.Date format
-          if( !all(data[,grep("^DATE$", names(data))] == as.Date(data[,grep("^DATE_TIME$", names(data))])) ){
-            warning('User-supplied DATE column does not align with DATE_TIME values.\nCreated additional column DATE_OLD in place of DATE.')
-            data$DATE_OLD <- data$DATE
-            data$DATE <- as.Date(data$DATE_TIME)
-          }
+        # Adjust Systolic Blood Pressure (SBP)
+        data <- sbp_adj(data = data, sbp = sbp, data_screen = data_screen, SUL = SUL, SLL = SLL)
+        sbp_tmp <- names(data)[1] # For bp_stages function
 
-        } # No DATE_TIME column but identified DATE column present --> continue
+        # Adjust Diastolic Blood Pressure (DBP)
+        data <- dbp_adj(data = data, dbp = dbp, data_screen = data_screen, DUL = DUL, DLL = DLL)
+        dbp_tmp <- names(data)[2] # For bp_stages function
 
-        col_idx <- grep("^DATE$", names(data))
-        colnames(data)[col_idx] <- "DATE"
-        data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
+        # Adjust ID
+        data <- id_adj(data = data, id = id)
+
+        # Adjust Group
+        data <- group_adj(data = data, group = group)
 
 
-  # DATE column NOT identified in dataset
-  } else if(length(grep("^DATE_TIME$", names(data))) == 1){
+        # Adjust Visit
+        data <- visit_adj(data = data, visit = visit)
 
-        # DATE_TIME column is present AND no DATE column found:
+        # Adjust Date/Time values
+        if(!is.null(date_time)){
 
-        message('NOTE: Created DATE column from DATE_TIME column\n')
+            data <- date_time_adj(data = data, date_time = date_time, dt_fmt = dt_fmt, ToD_int = ToD_int, chron_order = chron_order, tz = tz)
 
-        # Create DATE column using as.Date of DATE_TIME
-        data$DATE <- as.Date(data$DATE_TIME)
+        }
 
-        col_idx <- grep("^DATE$", names(data))
-        colnames(data)[col_idx] <- "DATE"
-        data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
+        # Adjust eod / dates
+        if(!is.null(eod)){
+
+              # Incorporate End-of-Day argument and calibrate dates
+              data <- eod_adj(data = data, eod = eod)
+
+        }
+
+        # Adjust WAKE indicator
+        data <- wake_adj(data = data, wake = wake, bp_type = bp_type)
+
+        # Adjust Day of Week
+        data <- dow_adj(data = data, DoW = DoW)
+
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+
+        #+++++++++++++++++++++++++++++++++++#
+        # KEEP THIS ORDER: RPP, PP, MAP, HR #
+        #+++++++++++++++++++++++++++++++++++#
+
+        # Adjust Heart Rate (HR)
+        data <- hr_adj(data = data, hr = hr, data_screen = data_screen, HRUL = HRUL, HRLL = HRLL)
+
+        # Adjust Rate Pressure Product (RPP)
+        data <- rpp_adj(data = data, rpp = rpp)
+
+        # Adjust Pulse Pressure (PP)
+        data <- pp_adj(data = data, pp = pp)
+
+        # Adjust Mean Arterial Pressure (MAP)
+        data <- map_adj(data = data, map = map)
+
+
+        # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+
+        # Aggregate data if selected
+        if(agg == TRUE){
+
+          data <- agg_adj(data = data, bp_type = bp_type, agg_thresh = agg_thresh, collapse_df = collapse_df)
+
+        }
+
+
+        # BP Stages
+        data <- bp_stages(data = data,
+                          sbp = sbp_tmp,
+                          dbp = dbp_tmp,
+                          inc_low = inc_low,
+                          inc_crisis = inc_crisis,
+                          data_screen = data_screen,
+                          SUL = SUL,
+                          SLL = SLL,
+                          DUL = DUL,
+                          DLL = DLL)
+
+
+        # Move Classification columns to correct positions
+        data <- data %>%
+                  dplyr::relocate(BP_CLASS, .after = DBP) #%>%
+                  #dplyr::relocate(SBP_CATEGORY, .after = BP_CLASS) %>%
+                  #dplyr::relocate(DBP_CATEGORY, .after = SBP_CATEGORY)
+
+
 
   }
 
 
-
-
-
-
-  # Day of Week
-
-  # DoW argument supplied by user
-  if(!is.null(DoW)){
-
-        # Ensure that DoW argument matches corresponding column in dataset
-        if(toupper(DoW) %in% colnames(data) == FALSE){
-
-          stop('User-defined day of week column name, DoW, does not match column name within supplied dataset\n')
-
-        }
-
-        # Find the index of the supplied DoW column
-        col_idx <- grep(paste("\\b",toupper(DoW),"\\b", sep = ""), names(data))
-        colnames(data)[col_idx] <- "DAY_OF_WEEK"
-
-        # If all of the unique elements of the User-Supplied Day of Week do not match, run the Day of Week line to create column
-        if( !all( toupper(unique(data$DAY_OF_WEEK)) %in% toupper(c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))) ){
-
-          if( !("DATE_TIME" %in% colnames(data)) & !("DATE" %in% colnames(data)) ){
-
-              stop('Not all unique values from DoW column are valid. (i.e. "Tues" instead of "Tue").
-                   \nNo DATE_TIME or DATE column found. Remove DoW argument and re-process dataset.')
-
-          }else{
-
-            # Not all unique DoW values are valid, create another column and warn user that old DoW column was renamed
-            warning('Not all unique values from DoW column are valid.
-                    \nRenamed user-supplied DoW column to "DAY_OF_WEEK_OLD" and created new column from DATE/DATE_TIME column if available')
-            if( !("DATE_TIME" %in% colnames(data)) ){
-
-              data$DAY_OF_WEEK_OLD <- data$DAY_OF_WEEK
-              data$DAY_OF_WEEK <- ordered(weekdays(as.Date(data$DATE), abbreviate = TRUE),
-                                         levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
-
-            }else{
-
-              data$DAY_OF_WEEK_OLD <- data$DAY_OF_WEEK
-              data$DAY_OF_WEEK = ordered(weekdays(as.Date(data$DATE_TIME), abbreviate = TRUE),
-                                         levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
-
-            }
-          }
-        }
-
-        # Supplied days of week are correct (i.e. no mis-spellings) and need to be ordered
-        data$DAY_OF_WEEK = ordered(data$DAY_OF_WEEK,
-                                   levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
-
-
-  # DoW argument NOT supplied by user
-  }else{
-
-        # First check if datetime supplied then check for date otherwise nothing
-        if( "DATE_TIME" %in% colnames(data) ){
-
-          # Day of Week from DATE_TIME column
-          data$DAY_OF_WEEK <- ordered(weekdays(as.Date(data$DATE_TIME), abbreviate = TRUE),
-                                     levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
-
-        }else if( "DATE" %in% colnames(data) ){
-
-          # Day of Week from DATE column
-          data$DAY_OF_WEEK <- ordered(weekdays(as.Date(data$DATE), abbreviate = TRUE),
-                                      levels = c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"))
-
-        }
-
-  }
-
-
-
-
-
-  # ID
-  if(!is.null(id)){
-
-    if(toupper(id) %in% colnames(data) == FALSE){
-
-      stop('User-defined ID name does not match column name of supplied dataset\n')
-
-    } else {
-
-      col_idx <- grep(paste("\\b",toupper(id),"\\b", sep = ""), names(data))
-      colnames(data)[col_idx] <- "ID"
-      data <- data[, c(col_idx, (1:ncol(data))[-col_idx])]
-
-    }
-  }else{
-
-    if(!("ID" %in% colnames(data))){
-      # Create placeholder ID column for use with other functions / plots
-      data <- data %>% dplyr::mutate(ID = 1)
-    }
-
-  }
-
-
-  # BP Categories / Stages
-  # Only require SBP and DBP
-
-  # Compatibility Check for user-supplied stages if applicable
-  sbp_stages <- stage_check(sbp_stages_alt, dbp_stages_alt)[[1]]
-  dbp_stages <- stage_check(sbp_stages_alt, dbp_stages_alt)[[2]]
-
-  data <- data %>%
-    dplyr::mutate(SBP_Category = dplyr::case_when(SBP <= sbp_stages[2] ~ "Low",
-                                    SBP > sbp_stages[2] & SBP <= sbp_stages[3] ~ "Normal",
-                                    SBP > sbp_stages[3] & SBP <= sbp_stages[4] ~ "Elevated",
-                                    SBP > sbp_stages[4] & SBP <= sbp_stages[5] ~ "Stage 1",
-                                    SBP > sbp_stages[5] & SBP <= sbp_stages[6] ~ "Stage 2",
-                                    SBP > sbp_stages[6] ~ "Crisis"),
-           SBP_Category = factor(SBP_Category, levels = c("Low", "Normal", "Elevated", "Stage 1", "Stage 2", "Crisis")),
-
-           DBP_Category = dplyr::case_when(DBP <= dbp_stages[2] ~ "Low",
-                                    DBP > dbp_stages[2]  & DBP <= dbp_stages[3] ~ "Normal",
-                                    DBP > dbp_stages[3]  & DBP <= dbp_stages[4] ~ "Elevated",
-                                    DBP > dbp_stages[4]  & DBP <= dbp_stages[5] ~ "Stage 1",
-                                    DBP > dbp_stages[5] & DBP <= dbp_stages[6] ~ "Stage 2",
-                                    DBP > dbp_stages[6] ~ "Crisis"),
-           DBP_Category = factor(DBP_Category, levels = c("Low", "Normal", "Elevated", "Stage 1", "Stage 2", "Crisis")),
-           )
-
+  # Create column indicating blood pressure type (bp_type)
+  data$BP_TYPE <- bp_type
 
   # Sanity check for any future additions to this function to ensure all columns are capitalized for consistency
   colnames(data) <- toupper( colnames(data) )
 
+  # Convert back to data frame
+  data <- as.data.frame(data)
+
+
   return(data)
 }
-
-
-

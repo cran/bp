@@ -1,5 +1,7 @@
 #' Average Real Variability (ARV)
 #'
+#' THIS IS A DEPRECATED FUNCTION. USE bp_arv INSTEAD.
+#'
 #' Calculate the Average Real Variability (ARV) at various levels of granularity
 #' based on what is supplied (ID, VISIT, WAKE, and / or DATE). ARV is a measure
 #' of dispersion that takes into account the temporal structure of the data and relies
@@ -31,6 +33,12 @@
 #' processed \code{data} input supplied. Capitalization of \code{add_groups} does not matter.
 #' Ex: \code{add_groups = c("Time_of_Day")}
 #'
+#' @param inc_wake Optional argument corresponding to whether or not to include \code{WAKE}
+#' in the grouping of the final output (if \code{WAKE} column is available). By default,
+#' \code{inc_wake = TRUE} which will include the \code{WAKE} column in the groups by which
+#' to calculate the respective metrics.
+#'
+#'
 #' @return A tibble object with a row corresponding to each subject, or alternatively
 #' a row corresponding to each date, if inc_date = TRUE. The resulting tibble consists of:
 #' \itemize{
@@ -61,21 +69,23 @@
 #'
 #' @examples
 #' # Load data
-#' data(hypnos_data)
+#' data(bp_hypnos)
 #' data(bp_jhs)
 #'
-#' # Process hypnos_data
-#' hypnos_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
+#' # Process bp_hypnos
+#' hypnos_proc <- process_data(bp_hypnos, sbp = "SYST", dbp = "DIAST", date_time = "date.time",
 #' id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
 #' # Process bp_jhs data
-#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
+#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", date_time = "DateTime",
 #' hr = "Pulse.bpm.")
 #'
 #' # ARV Calculation
-#' arv(hypnos_proc, add_groups = c("SBP_Category"))
-#' arv(jhs_proc, inc_date = TRUE)
+#' bp_arv(hypnos_proc, add_groups = c("SBP_Category"))
+#' bp_arv(jhs_proc, inc_date = TRUE)
 #' @export
-arv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL){
+arv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL, inc_wake = TRUE){
+
+  .Deprecated("bp_arv")
 
   SBP = DBP = ID = . = NULL
   rm(list = c('SBP', 'DBP', 'ID', '.'))
@@ -91,7 +101,7 @@ arv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = N
 
       # Filter data based on subset of subjects
       data <- data %>%
-        dplyr::filter(ID == subj)
+        dplyr::filter(ID %in% subj)
 
     }
 
@@ -119,7 +129,7 @@ arv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = N
 
 
   # Verify that add_groups is valid and create grps variable for dplyr
-  grps <- create_grps(data = data, inc_date = inc_date, add_groups = add_groups)
+  grps <- create_grps(data = data, inc_date = inc_date, add_groups = add_groups, inc_wake = inc_wake)
 
   if(length(grps) == 0){
 
@@ -140,7 +150,7 @@ arv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = N
     { if (bp_type == 1) dplyr::summarise(., ARV = sum( abs( (SBP - dplyr::lag(SBP))[2:length(SBP - dplyr::lag(SBP))] ) ) / (dplyr::n() - 1), N = dplyr::n()) else . } %>% # SBP only
     { if (bp_type == 2) dplyr::summarise(., ARV = sum( abs( (DBP - dplyr::lag(DBP))[2:length(DBP - dplyr::lag(DBP))] ) ) / (dplyr::n() - 1), N = dplyr::n()) else . } %>% # DBP only
     { if (bp_type == 0) dplyr::summarise(., ARV_SBP = sum( abs( (SBP - dplyr::lag(SBP))[2:length(SBP - dplyr::lag(SBP))] ) ) / (dplyr::n() - 1),
-                                            ARV_DBP = sum( abs( (DBP - dplyr::lag(DBP))[2:length(DBP - dplyr::lag(DBP))] ) ) / (dplyr::n() - 1), N = dplyr::n()) else . } # both SBP and DBP
+                                         ARV_DBP = sum( abs( (DBP - dplyr::lag(DBP))[2:length(DBP - dplyr::lag(DBP))] ) ) / (dplyr::n() - 1), N = dplyr::n()) else . } # both SBP and DBP
 
 
   return(out)

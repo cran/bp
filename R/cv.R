@@ -1,5 +1,7 @@
 #' Coefficient of Variation (CV)
 #'
+#' THIS IS A DEPRECATED FUNCTION. USE bp_cv INSTEAD.
+#'
 #' Calculate the coefficient of variation at various levels of granularity
 #' based on what is supplied (ID, VISIT, WAKE, and / or DATE) for either SBP,
 #' DBP, or both. CV is a measure of dispersion
@@ -29,6 +31,11 @@
 #' processed \code{data} input supplied. Capitalization of \code{add_groups} does not matter.
 #' Ex: \code{add_groups = c("Time_of_Day")}
 #'
+#' @param inc_wake Optional argument corresponding to whether or not to include \code{WAKE}
+#' in the grouping of the final output (if \code{WAKE} column is available). By default,
+#' \code{inc_wake = TRUE} which will include the \code{WAKE} column in the groups by which
+#' to calculate the respective metrics.
+#'
 #' @return A tibble object with a row corresponding to each subject, or alternatively
 #' a row corresponding to each date if inc_date = TRUE. The resulting tibble consists of:
 #' \itemize{
@@ -55,21 +62,23 @@
 #'
 #' @examples
 #' # Load data
-#' data(hypnos_data)
+#' data(bp_hypnos)
 #' data(bp_jhs)
 #'
-#' # Process hypnos_data
-#' hypnos_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
+#' # Process bp_hypnos
+#' hypnos_proc <- process_data(bp_hypnos, sbp = "SYST", dbp = "DIAST", date_time = "date.time",
 #' id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
 #' # Process bp_jhs data
-#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
+#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", date_time = "DateTime",
 #' hr = "Pulse.bpm.")
 #'
 #' # CV Calculation
-#' cv(hypnos_proc, inc_date = TRUE, add_groups = "SBP_Category")
-#' cv(jhs_proc, add_groups = c("meal_time"))
+#' bp_cv(hypnos_proc, inc_date = TRUE, add_groups = "SBP_Category")
+#' bp_cv(jhs_proc, add_groups = c("meal_time"))
 #' # Notice that meal_time is not a column from process_data, but it still works
-cv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL){
+cv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL, inc_wake = TRUE){
+
+  .Deprecated("bp_cv")
 
   SBP = DBP = ID = . = NULL
   rm(list = c('SBP', 'DBP', 'ID', '.'))
@@ -85,7 +94,7 @@ cv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NU
 
       # Filter data based on subset of subjects
       data <- data %>%
-        dplyr::filter(ID == subj)
+        dplyr::filter(ID %in% subj)
 
     }
 
@@ -112,7 +121,7 @@ cv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NU
 
 
   # Verify that add_groups is valid and create grps variable for dplyr
-  grps <- create_grps(data = data, inc_date = inc_date, add_groups = add_groups)
+  grps <- create_grps(data = data, inc_date = inc_date, add_groups = add_groups, inc_wake = inc_wake)
 
   if(length(grps) == 0){
 
@@ -133,10 +142,10 @@ cv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NU
     { if (bp_type == 1) dplyr::summarise(., CV = sd(SBP, na.rm = TRUE) / mean(SBP, na.rm = TRUE) * 100, SD = sd(SBP),N = dplyr::n()) else . } %>% # SBP only
     { if (bp_type == 2) dplyr::summarise(., CV = sd(DBP, na.rm = TRUE) / mean(DBP, na.rm = TRUE) * 100, SD = sd(DBP),N = dplyr::n()) else . } %>% # DBP only
     { if (bp_type == 0) dplyr::summarise(., CV_SBP = sd(SBP, na.rm = TRUE) / mean(SBP, na.rm = TRUE) * 100,
-                                            CV_DBP = sd(DBP, na.rm = TRUE) / mean(DBP, na.rm = TRUE) * 100,
-                                            SD_SBP = sd(SBP),
-                                            SD_DBP = sd(DBP),
-                                            N = dplyr::n()) else . } # both SBP and DBP
+                                         CV_DBP = sd(DBP, na.rm = TRUE) / mean(DBP, na.rm = TRUE) * 100,
+                                         SD_SBP = sd(SBP),
+                                         SD_DBP = sd(DBP),
+                                         N = dplyr::n()) else . } # both SBP and DBP
 
   return(out)
 }

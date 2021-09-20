@@ -4,7 +4,14 @@
 \alias{sv}
 \title{Successive Variation (SV)}
 \usage{
-sv(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL)
+sv(
+  data,
+  inc_date = FALSE,
+  subj = NULL,
+  bp_type = 0,
+  add_groups = NULL,
+  inc_wake = TRUE
+)
 }
 \arguments{
 \item{data}{Required argument. Pre-processed dataframe with SBP and DBP columns
@@ -31,6 +38,11 @@ additional "group" to further refine the output. The supplied input must be a
 character vector with the strings corresponding to existing column names of the
 processed \code{data} input supplied. Capitalization of \code{add_groups} does not matter.
 Ex: \code{add_groups = c("Time_of_Day")}}
+
+\item{inc_wake}{Optional argument corresponding to whether or not to include \code{WAKE}
+in the grouping of the final output (if \code{WAKE} column is available). By default,
+\code{inc_wake = TRUE} which will include the \code{WAKE} column in the groups by which
+to calculate the respective metrics.}
 }
 \value{
 A tibble object with a row corresponding to each subject, or alternatively
@@ -54,6 +66,9 @@ a row corresponding to each date if inc_date = TRUE. The resulting tibble consis
 }
 }
 \description{
+THIS IS A DEPRECATED FUNCTION. USE bp_sv INSTEAD.
+}
+\details{
 Calculate the successive variation (SV) at various levels of granularity
 based on what is supplied (ID, VISIT, WAKE, and / or DATE)for either SBP,
 DBP, or both. SV is a measure of dispersion that takes into account the
@@ -61,26 +76,25 @@ temporal structure of the data and relies on the sum of squared differences
 in successive observations, unlike the average real variability (ARV)
 which relies on the sum of absolute differences.
 $$SV = sqrt(sum(x_{i+1} - x_i)^2/n-1)$$
-}
-\details{
+
 \strong{NOTE:} The canonical standard deviation, independent of the temporal
 structure using the sample average, is added for comparison:
 $$SD = sqrt(sum(x_{i+1} - xbar)^2/n-1)$$
 }
 \examples{
 # Load data
-data(hypnos_data)
+data(bp_hypnos)
 data(bp_jhs)
 
-# Process hypnos_data
-hypnos_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
+# Process bp_hypnos
+hypnos_proc <- process_data(bp_hypnos, sbp = "SYST", dbp = "DIAST", date_time = "date.time",
 id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
 # Process bp_jhs data
-jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
+jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", date_time = "DateTime",
 hr = "Pulse.bpm.")
 
 # SV Calculation
-sv(hypnos_proc)
-sv(jhs_proc, add_groups = c("meal_time"))
+bp_sv(hypnos_proc)
+bp_sv(jhs_proc, add_groups = c("meal_time"))
 # Notice that meal_time is not a column from process_data, but it still works
 }

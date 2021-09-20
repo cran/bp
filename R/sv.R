@@ -1,6 +1,8 @@
 
 #' Successive Variation (SV)
 #'
+#' THIS IS A DEPRECATED FUNCTION. USE bp_sv INSTEAD.
+#'
 #' Calculate the successive variation (SV) at various levels of granularity
 #' based on what is supplied (ID, VISIT, WAKE, and / or DATE)for either SBP,
 #' DBP, or both. SV is a measure of dispersion that takes into account the
@@ -38,6 +40,11 @@
 #' processed \code{data} input supplied. Capitalization of \code{add_groups} does not matter.
 #' Ex: \code{add_groups = c("Time_of_Day")}
 #'
+#' @param inc_wake Optional argument corresponding to whether or not to include \code{WAKE}
+#' in the grouping of the final output (if \code{WAKE} column is available). By default,
+#' \code{inc_wake = TRUE} which will include the \code{WAKE} column in the groups by which
+#' to calculate the respective metrics.
+#'
 #' @return A tibble object with a row corresponding to each subject, or alternatively
 #' a row corresponding to each date if inc_date = TRUE. The resulting tibble consists of:
 #' \itemize{
@@ -63,21 +70,23 @@
 #'
 #' @examples
 #' # Load data
-#' data(hypnos_data)
+#' data(bp_hypnos)
 #' data(bp_jhs)
 #'
-#' # Process hypnos_data
-#' hypnos_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
+#' # Process bp_hypnos
+#' hypnos_proc <- process_data(bp_hypnos, sbp = "SYST", dbp = "DIAST", date_time = "date.time",
 #' id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
 #' # Process bp_jhs data
-#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
+#' jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", date_time = "DateTime",
 #' hr = "Pulse.bpm.")
 #'
 #' # SV Calculation
-#' sv(hypnos_proc)
-#' sv(jhs_proc, add_groups = c("meal_time"))
+#' bp_sv(hypnos_proc)
+#' bp_sv(jhs_proc, add_groups = c("meal_time"))
 #' # Notice that meal_time is not a column from process_data, but it still works
-sv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL){
+sv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL, inc_wake = TRUE){
+
+  .Deprecated("bp_sv")
 
   SBP = DBP = ID = . = NULL
   rm(list = c('SBP', 'DBP', 'ID', '.'))
@@ -93,7 +102,7 @@ sv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NU
 
       # Filter data based on subset of subjects
       data <- data %>%
-        dplyr::filter(ID == subj)
+        dplyr::filter(ID %in% subj)
 
     }
 
@@ -120,7 +129,7 @@ sv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NU
 
 
   # Create groups for summarizing data with dplyr
-  grps <- create_grps(data = data, inc_date = inc_date, add_groups = add_groups)
+  grps <- create_grps(data = data, inc_date = inc_date, add_groups = add_groups, inc_wake = inc_wake)
 
   if(length(grps) == 0){
 
@@ -141,8 +150,8 @@ sv <- function(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NU
     { if (bp_type == 1) dplyr::summarise(., SV = sqrt( sum(( (SBP - dplyr::lag(SBP))[2:length(SBP - dplyr::lag(SBP))] )^2 ) / (dplyr::n() - 1)), N = dplyr::n()) else . } %>% # SBP only
     { if (bp_type == 2) dplyr::summarise(., SV = sqrt( sum(( (DBP - dplyr::lag(DBP))[2:length(DBP - dplyr::lag(DBP))] )^2 ) / (dplyr::n() - 1)), N = dplyr::n()) else . } %>% # DBP only
     { if (bp_type == 0) dplyr::summarise(., SV_SBP = sqrt( sum(( (SBP - dplyr::lag(SBP))[2:length(SBP - dplyr::lag(SBP))] )^2 ) / (dplyr::n() - 1)),
-                                            SV_DBP = sqrt( sum(( (DBP - dplyr::lag(DBP))[2:length(DBP - dplyr::lag(DBP))] )^2 ) / (dplyr::n() - 1)),
-                                            N = dplyr::n()) else . } # both SBP and DBP
+                                         SV_DBP = sqrt( sum(( (DBP - dplyr::lag(DBP))[2:length(DBP - dplyr::lag(DBP))] )^2 ) / (dplyr::n() - 1)),
+                                         N = dplyr::n()) else . } # both SBP and DBP
 
 
   return(out)

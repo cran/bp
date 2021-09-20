@@ -16,8 +16,9 @@ value or a vector of elements. The input type should be character, but the funct
 comply with integers so long as they are all present in the \code{ID} column of the data.}
 }
 \value{
-A list containing three histogram visual graphics corresponding to the SBP / DBP totals,
-SBP frequency, and DBP frequency.
+A list containing four objects: three histogram visual graphics corresponding to
+the SBP / DBP totals, SBP frequency, and DBP frequency, and a fourth list element
+corresponding to a plot legend object for use in the \code{bp_report} function
 }
 \description{
 The \code{bp_hist} function serves to display the frequencies of the \code{SBP}
@@ -26,11 +27,12 @@ function.
 }
 \examples{
 data("bp_jhs")
-data("hypnos_data")
-hyp_proc <- process_data(hypnos_data,
+data("bp_hypnos")
+hyp_proc <- process_data(bp_hypnos,
+                         bp_type = 'abpm',
                          sbp = "syst",
                          dbp = "DIAST",
-                         bp_datetime = "date.time",
+                         date_time = "date.time",
                          id = "id",
                          wake = "wake",
                          visit = "visit",
@@ -43,9 +45,9 @@ hyp_proc <- process_data(hypnos_data,
 jhs_proc <- process_data(bp_jhs,
                          sbp = "Sys.mmHg.",
                          dbp = "Dias.mmHg.",
-                         bp_datetime = "DateTime",
+                         date_time = "DateTime",
                          hr = "pulse.bpm.")
-rm(hypnos_data, bp_jhs)
+rm(bp_hypnos, bp_jhs)
 
 bp_hist(hyp_proc)
 bp_hist(jhs_proc)

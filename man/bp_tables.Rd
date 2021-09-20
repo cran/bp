@@ -22,12 +22,12 @@ and \code{DBP_CATEGORY} columns.}
 
 \item{bp_perc_margin}{An optional argument that determines which of the marginal totals
 to include in the raw count tables expressed as percentages. The argument can take on
-values either 0 (both SBP and DBP), 1 (SBP only), or 2 (DBP only).}
+values either NULL (default, both SBP and DBP), 1 (SBP only), or 2 (DBP only).}
 
 \item{wake_perc_margin}{An optional argument that determines which of the marginal totals
 to include in the tables pertaining to the percentages of awake / asleep readings if
 applicable (i.e. if the WAKE column is present). The argument can take on values either
-0 (both SBP and DBP), 1 (SBP only), or 2 (DBP only).}
+NULL (both SBP and DBP), 1 (SBP only), or 2 (DBP only).}
 
 \item{subj}{Optional argument. Allows the user to specify and subset specific subjects
 from the \code{ID} column of the supplied data set. The \code{subj} argument can be a single
@@ -44,11 +44,12 @@ specific to blood pressure.
 }
 \examples{
 data("bp_jhs")
-data("hypnos_data")
-hyp_proc <- process_data(hypnos_data,
+data("bp_hypnos")
+hyp_proc <- process_data(bp_hypnos,
+                         bp_type = 'abpm',
                          sbp = "syst",
                          dbp = "DIAST",
-                         bp_datetime = "date.time",
+                         date_time = "date.time",
                          id = "id",
                          wake = "wake",
                          visit = "visit",
@@ -61,9 +62,9 @@ hyp_proc <- process_data(hypnos_data,
 jhs_proc <- process_data(bp_jhs,
                          sbp = "Sys.mmHg.",
                          dbp = "Dias.mmHg.",
-                         bp_datetime = "DateTime",
+                         date_time = "DateTime",
                          hr = "pulse.bpm.")
-rm(hypnos_data, bp_jhs)
+rm(bp_hypnos, bp_jhs)
 
 bp_tables(jhs_proc)
 bp_tables(hyp_proc)

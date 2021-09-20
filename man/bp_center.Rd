@@ -4,7 +4,14 @@
 \alias{bp_center}
 \title{Measures of Center (bp_center)}
 \usage{
-bp_center(data, inc_date = FALSE, subj = NULL, bp_type = 0, add_groups = NULL)
+bp_center(
+  data,
+  inc_date = FALSE,
+  subj = NULL,
+  bp_type = 0,
+  add_groups = NULL,
+  inc_wake = TRUE
+)
 }
 \arguments{
 \item{data}{Required argument. Pre-processed dataframe with SBP and DBP columns
@@ -31,6 +38,11 @@ additional "group" to further refine the output. The supplied input must be a
 character vector with the strings corresponding to existing column names of the
 processed \code{data} input supplied. Capitalization of \code{add_groups} does not matter.
 Ex: \code{add_groups = c("Time_of_Day")}}
+
+\item{inc_wake}{Optional argument corresponding to whether or not to include \code{WAKE}
+in the grouping of the final output (if \code{WAKE} column is available). By default,
+\code{inc_wake = TRUE} which will include the \code{WAKE} column in the groups by which
+to calculate the respective metrics.}
 }
 \value{
 A tibble object with a row corresponding to each subject, or alternatively
@@ -61,14 +73,14 @@ DBP, or both.
 }
 \examples{
 # Load data
-data(hypnos_data)
+data(bp_hypnos)
 data(bp_jhs)
 
-# Process hypnos_data
-hypnos_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
+# Process bp_hypnos
+hypnos_proc <- process_data(bp_hypnos, sbp = "SYST", dbp = "DIAST", date_time = "date.time",
 id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
 # Process bp_jhs data
-jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
+jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", date_time = "DateTime",
 hr = "Pulse.bpm.")
 
 # BP Center Calculation

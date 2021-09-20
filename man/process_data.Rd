@@ -6,10 +6,14 @@
 \usage{
 process_data(
   data,
+  bp_type = c("hbpm", "abpm", "ap"),
+  ap = NULL,
+  time_elap = NULL,
   sbp = NULL,
   dbp = NULL,
-  bp_datetime = NULL,
+  date_time = NULL,
   id = NULL,
+  group = NULL,
   wake = NULL,
   visit = NULL,
   hr = NULL,
@@ -18,8 +22,22 @@ process_data(
   rpp = NULL,
   DoW = NULL,
   ToD_int = NULL,
-  sbp_stages_alt = NULL,
-  dbp_stages_alt = NULL
+  eod = NULL,
+  data_screen = TRUE,
+  SUL = 240,
+  SLL = 50,
+  DUL = 140,
+  DLL = 40,
+  HRUL = 220,
+  HRLL = 27,
+  inc_low = TRUE,
+  inc_crisis = TRUE,
+  agg = FALSE,
+  agg_thresh = 3,
+  collapse_df = FALSE,
+  dt_fmt = "ymd HMS",
+  chron_order = FALSE,
+  tz = "UTC"
 )
 }
 \arguments{
@@ -27,18 +45,39 @@ process_data(
 contain data for Systolic blood pressure and Diastolic blood pressure at a
 minimum.}
 
+\item{bp_type}{Required argument specifying which of the three BP data types
+("HBPM", "ABPM", or "AP") the input data is. Default \code{bp_type} set to "HBPM".
+This argument determines which processing steps are necessary to yield sensible
+output.}
+
+\item{ap}{(For AP data only) Required column name (character string) corresponding
+to continuous Arterial Pressure (AP) (mmHg). Note that this is a required argument
+so long as bp_type = "AP". Ensure that bp_type is set accordingly.}
+
+\item{time_elap}{(For AP data only) Column name corresponding to the time elapsed
+for the given AP waveform data.}
+
 \item{sbp}{Required column name (character string) corresponding to Systolic Blood
 Pressure (mmHg)}
 
 \item{dbp}{Required column name (character string) corresponding to Diastolic Blood
 Pressure (mmHg)}
 
-\item{bp_datetime}{Optional column name (character string) corresponding to Date/Time,
-but HIGHLY recommended to supply if available.}
+\item{date_time}{Optional column name (character string) corresponding to Date/Time,
+but HIGHLY recommended to supply if available.
+
+For DATE-only columns (with no associated time), leave date_time = NULL. DATE-only
+adjustments are automatic. Dates can be automatically calculated off DATE_TIME column
+provided that it is called "DATE_TIME" exactly.}
 
 \item{id}{Optional column name (character string) corresponding to subject ID. Typically
 needed for data corresponding to more than one subject. For one-subject datasets, ID
 will default to 1 (if ID column not found in dataset)}
+
+\item{group}{Optional column name (character string) corresponding to an additional
+grouping variable that can be used to further break down data. NOTE that this simply
+sets the column as "GROUP" so that other functions recognize which column to use as
+the grouping variable.}
 
 \item{wake}{Optional column name (character string) corresponding to sleep status. A
 WAKE value of 1 indicates that the subject is awake and 0 implies asleep.}
@@ -61,72 +100,156 @@ RPP will be calculated automatically.}
 If not supplied, but DATE or DATE_TIME columns available, then DoW will be created
 automatically. DoW values must be abbreviated as such \code{c("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")}}
 
-\item{ToD_int}{Optional vector that overrides the default interval for the Time-of-Day periods.
-By default, the Morning, Afternoon, Evening, and Night periods are set at 6, 12, 18, 0 respectively,
-where 0 corresponds to the 24th hour of the day (i.e. Midnight). By inputting a vector for the
-\code{ToD_int} function argument, the default period can be re-arranged accordingly.
+\item{ToD_int}{Optional vector of length 4, acceptable values are from 0 to 23 in a an order corresponding to hour for Morning, Afternoon, Evening, Night). This vector allows to override the default interval for the Time-of-Day periods: if NULL, the Morning, Afternoon, Evening, and Night periods are set at 6, 12, 18, 0 respectively,
+where 0 corresponds to the 24th hour of the day (i.e. Midnight).
 For example, ToD_int = c(5, 13, 18, 23) would correspond to a period for
 Morning starting at 5:00 (until 13:00), Afternoon starting at 13:00 (until 18:00),
 Evening starting at 18:00 (until 23:00), and Night starting at 23:00 (until 5:00)}
 
-\item{sbp_stages_alt}{(Optional) Determines the lower and upper limits for each stage
-of systolic blood pressure (\code{SBP}). If supplied, the input must be a vector
-containing 7 integers that correspond to the limits of each stage. The default vector would be
-given by \code{c(80, 100, 120, 130, 140, 180, 200)} where:
-\itemize{
+\item{eod}{Optional argument to adjust the delineation for the end of day (eod). The supplied value should be a character string with 4 characters representing the digits of 24-hour time, e.g. "1310" corresponds to 1:10pm. For individuals who
+do not go to bed early or work night-shifts, this argument adjusts the \code{DATE} column so that the days change at specified time. \code{eod = "0000"} means no change. \code{eod = "1130"} will adjust the date of the readings up to 11:30am to the previous date. \code{eod = "1230"} will adjust the date of the readings after 12:30pm to the next date.}
 
-   \item Low - default: < 100 (specifically 80 - 100)
-   \item Normal - default: 100 - 120
-   \item Elevated - default: 120 - 130
-   \item Stage 1 - default: 130 - 140
-   \item Stage 2 - default: 140 - 180
-   \item Crisis - default: > 180 (specifically 180 - 200)
+\item{data_screen}{Optional logical argument; default set to TRUE. Screens for extreme values in the data
+for both \code{SBP} and \code{DBP} according to Omboni, et al (1995) paper - Calculation of Trough:Peak
+Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure: Methodological Aspects}
 
-}}
+\item{SUL}{Systolic Upper Limit (SUL). If \code{data_screen = TRUE}, then \code{SUL} sets the upper limit by which
+to exclude any \code{SBP} values that exceed this threshold. The default is set to 240 per Omboni, et al (1995)
+paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+Methodological Aspects}
 
-\item{dbp_stages_alt}{(Optional) Determines the lower and upper limits for each stage
-of diastolic blood pressure (\code{DBP}). If supplied, the input must be a vector
-containing 7 integers that correspond to the limits of each stage. The default vector would be
-given by \code{c(25, 60, 80, 85, 90, 120, 140)} where:
-\itemize{
+\item{SLL}{Systolic Lower Limit (SLL). If \code{data_screen = TRUE}, then \code{SLL} sets the lower limit by which
+to exclude any \code{SBP} values that fall below this threshold. The default is set to 50 per Omboni, et al (1995)
+paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+Methodological Aspects}
 
-   \item Low - default: < 60 (specifically 25 - 60)
-   \item Normal - default: 60 - 80
-   \item Elevated - default: 80 - 85
-   \item Stage 1 - default: 85 - 90
-   \item Stage 2 - default: 90 - 120
-   \item Crisis - default: > 120 (specifically 120 - 140)
+\item{DUL}{Diastolic Upper Limit (DUL). If \code{data_screen = TRUE}, then \code{DUL} sets the upper limit by which
+to exclude any \code{DBP} values that exceed this threshold. The default is set to 140 per Omboni, et al (1995)
+paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+Methodological Aspects}
 
-}}
+\item{DLL}{Diastolic Lower Limit (DLL). If \code{data_screen = TRUE}, then \code{DLL} sets the lower limit by which
+to exclude any \code{DBP} values that fall below this threshold. The default is set to 40 per Omboni, et al (1995)
+paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
+Methodological Aspects}
+
+\item{HRUL}{Heart Rate Upper Limit (HRUL). If \code{data_screen = TRUE}, then \code{HRUL} sets the upper limit
+by which to exclude any \code{HR} values that exceed this threshold. The default is set to 220 per the upper limit
+of the common max heart rate formula: 220 - age
+
+see https://www.cdc.gov/physicalactivity/basics/measuring/heartrate.htm}
+
+\item{HRLL}{Heart Rate Upper Limit (HRUL). If \code{data_screen = TRUE}, then \code{HRUL} sets the upper limit
+by which to exclude any \code{HR} values that exceed this threshold. The default is set to 27 per Guinness
+World Records - lowest heart rate (https://www.guinnessworldrecords.com/world-records/lowest-heart-rate)}
+
+\item{inc_low}{Optional logical argument dictating whether or not to include the "Low" category for BP
+classification column (and the supplementary SBP/DBP Category columns). Default set to TRUE.}
+
+\item{inc_crisis}{Optional logical argument dictating whether or not to include the "Crisis" category for BP
+classification column (and the supplementary SBP/DBP Category columns). Default set to TRUE.}
+
+\item{agg}{Optional argument specifying whether or not to aggregate the data based on the amount of time
+between observations. If \code{agg = TRUE} then any two (or more) observations within the amount of
+time alloted by the agg_thresh argument will be averaged together.}
+
+\item{agg_thresh}{Optional argument specifying the threshold of how many minutes can pass between readings
+(observations) and still be considered part of the same sitting. The default is set to 3 minutes. This implies
+that if two or more readings are within 3 minutes of each other, they will be averaged together (if agg is
+set to TRUE).}
+
+\item{collapse_df}{Optional argument that collapses the dataframe to eliminate repeating rows after
+aggregation.}
+
+\item{dt_fmt}{Optional argument that specifies the input date/time format (dt_fmt). Default set to "ymd HMS"
+but can take on any format specified by the lubridate package.}
+
+\item{chron_order}{Optional argument that specifies whether to order the data in chronological (Oldest
+dates & times at the top / first) or reverse chronological order (Most recent dates & times at the top / first).
+TRUE refers to chronological order; FALSE refers to reverse chronological order. The default is set to
+FALSE (i.e. most recent observations listed first in the dataframe).
+
+See https://lubridate.tidyverse.org/reference/parse_date_time.html for more details.}
+
+\item{tz}{Optional argument denoting the respective time zone. Default time zone set to "UTC". See
+Use \code{OlsonNames()} for a complete listing of all available time zones that can be used in this
+argument.}
 }
 \value{
-A processed dataframe object that cooperates with every other
-function within the bp package - all column names and formats comply.
+A processed dataframe object with standardized column names and formats to use with the rest of bp package functions. The following standardized column names are used throughout
+\item{BP_TYPE}{One of AP, HBPM or ABPM}
+\item{ID}{Subject ID}
+\item{SBP}{Systolic Blood Pressure}
+\item{DBP}{Diastolic Blood Pressure}
+\item{SBP_CATEGORY}{Ordinal, SBP characterization into "Low" < "Normal"<"Elevated"<"Stage 1"< "Stage 2" < "Crisis". "Low" is not included if \code{inc_low = FALSE}. "Crisis" is not included if \code{inc_crisis = FALSE}.}
+\item{DBP_CATEGORY}{Ordinal, DBP characterization into "Low" < "Normal"<"Elevated"<"Stage 1"< "Stage 2" < "Crisis". "Low" is not included if \code{inc_low = FALSE}. "Crisis" is not included if \code{inc_crisis = FALSE}.}
+\item{BP_CLASS}{Blood pressure categorization based on paired values (SBP, DBP) into one of the 8 stages according to Lee et al. 2020. See \code{\link{bp_scatter}}}
+\item{HR}{Heart Rate}
+\item{MAP}{Mean Arterial Pressure}
+\item{PP}{Pulse Pressure, SBP-DBP}
+\item{DATE_TIME}{Date and time in POSIXct format}
+\item{DATE}{Date only in Date format}
+\item{MONTH}{Month, integer from 1 to 12}
+\item{DAY}{Day, integer from 1 to 31}
+\item{YEAR}{Four digit year}
+\item{DAY_OF_WEEK}{Ordinal, with "Sun"<"Mon"<"Tue"<"Wed"<"Thu"<"Fri"<"Sat"}
+\item{TIME}{Time in character format}
+\item{HOUR}{Integer, from 0 to 23}
+\item{TIME_OF_DAY}{One of "Morning", "Afternoon", "Evening" or "Night"}
 }
 \description{
 A helper function to assist in pre-processing the user-supplied
-input data for use with other functions.
-Typically, this function will process the data and be stored as another
-dataframe. This function ensures that the supplied data complies with every
-function within the \code{bp} package. See Vignette for further details.
+input data in a standardized format for use with other functions in the \code{bp} package.
+See Vignette for further details.
 }
 \examples{
-# Load hypnos_data
-data("hypnos_data")
+# Load bp_hypnos
+data("bp_hypnos")
 
-# Process data for hypnos_data
-hyp_proc <- process_data(hypnos_data, sbp = "SYST", dbp = "DIAST", bp_datetime = "date.time",
-id = "id", wake = "wake", visit = "visit", hr = "hr", pp ="pp", map = "map", rpp = "rpp")
+# Process data for bp_hypnos
+hypnos_proc <- process_data(bp_hypnos,
+                              bp_type = 'abpm',
+                              sbp = 'syst',
+                              dbp = 'diast',
+                              date_time = 'date.time',
+                              hr = 'hr',
+                              pp = 'PP',
+                              map = 'MaP',
+                              rpp = 'Rpp',
+                              id = 'id',
+                              visit = 'Visit',
+                              wake = 'wake',
+                              data_screen = FALSE)
 
-hyp_proc
+hypnos_proc
+
 
 # Load bp_jhs data
 data("bp_jhs")
 
 # Process data for bp_jhs
-jhs_proc <- process_data(bp_jhs, sbp = "Sys.mmHg.", dbp = "Dias.mmHg.", bp_datetime = "DateTime",
-hr = "Pulse.bpm.")
+# Note that bp_type defaults to "hbpm" and is therefore not specified
+jhs_proc <- process_data(bp_jhs,
+                         sbp = "Sys.mmHg.",
+                         dbp = "Dias.mmHg.",
+                         date_time = "DateTime",
+                         hr = "Pulse.bpm.")
 
 jhs_proc
 
+}
+\references{
+Lee H, Yano Y, Cho SMJ, Park JH, Park S, Lloyd-Jones DM, Kim HC. Cardiovascular risk of isolated
+systolic or diastolic hypertension in young adults. \emph{Circulation}. 2020; 141:1778–1786.
+\doi{10.1161/CIRCULATIONAHA.119.044838}
+
+Omboni, S., Parati, G*., Zanchetti, A., Mancia, G. Calculation of trough: peak ratio of
+antihypertensive treatment from ambulatory blood pressure: methodological aspects
+\emph{Journal of Hypertension}. October 1995 - Volume 13 - Issue 10 - p 1105-1112
+\doi{10.1097/00004872-199510000-00005}
+
+Unger, T., Borghi, C., Charchar, F., Khan, N. A., Poulter, N. R., Prabhakaran, D., ... & Schutte,
+A. E. (2020). 2020 International Society of Hypertension global hypertension practice guidelines.
+\emph{Hypertension}, 75(6), 1334-1357.
+\doi{10.1161/HYPERTENSIONAHA.120.15026}
 }
