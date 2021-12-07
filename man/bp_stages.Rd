@@ -14,7 +14,8 @@ bp_stages(
   SUL = 240,
   SLL = 50,
   DUL = 140,
-  DLL = 40
+  DLL = 40,
+  adj_sbp_dbp = TRUE
 )
 }
 \arguments{
@@ -58,13 +59,16 @@ Methodological Aspects}
 to exclude any \code{DBP} values that fall below this threshold. The default is set to 40 per Omboni, et al (1995)
 paper - Calculation of Trough:Peak Ratio of Antihypertensive Treatment from Ambulatory Blood Pressure:
 Methodological Aspects}
+
+\item{adj_sbp_dbp}{Logical indicator to dictate whether or not to run helper functions that adjust / process
+SBP & DBP columns in supplied data set. Default set to: \code{adj_sbp_dbp = TRUE}}
 }
 \value{
 A dataframe with additional columns corresponding to the stages of high blood pressure and the
 supplementary SBP / DBP categories
 }
 \description{
-Adds SBP_Category and DBP_Category columns to supplied dataframe.
+Adds BP_CLASS, SBP_Category, and DBP_Category columns to supplied dataframe.
 }
 \details{
 Supplied dataframe must adhere to the unified format using the \code{process_data} function.

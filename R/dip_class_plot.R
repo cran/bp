@@ -1,5 +1,14 @@
 #' Plot of Dipping Classifications
 #'
+#' @description
+#' Graphical visualization of the dip_calc output for categories of dipping percentages.
+#'
+#' NOTE: Any reference to "sleep" in the bp package refers to an individual's nocturnal period;
+#' "sleep" is used in an informal sense for intuitive purposes. Technically, from a clinical perspective,
+#' indication of sleep is currently obtained through means of EEG or other highly specialized equipment.
+#' For all intents and purposes, sleep in the context of this package refers to actigraphy-inferred
+#' nocturnal periods of rest.
+#'
 #' @param data
 #' User-supplied data set that must contain \code{SBP}, \code{DBP}, and either \code{DATE_TIME} or \code{WAKE}
 #' columns in order to distinguish between sleep and awake
@@ -89,6 +98,9 @@ dip_class_plot <- function(data, subj = NULL, dip_thresh = 0.1, extreme_thresh =
     }
 
   }
+
+  # Remove NA values from data
+  data <- data %>% stats::na.omit()
 
   # Check compatibility of dip_thresh and extreme_thresh if not default (user-specified)
   if(dip_thresh != 0.10 | extreme_thresh != 0.20){

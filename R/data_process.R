@@ -331,21 +331,20 @@ process_data <- function(data,
 
         }
 
+        # Convert all column names to upper case for consistency
+        colnames(data) <- toupper(colnames(data))
 
-        # Adjust Systolic Blood Pressure (SBP)
+        # Adjust SBP
         data <- sbp_adj(data = data, sbp = sbp, data_screen = data_screen, SUL = SUL, SLL = SLL)
-        sbp_tmp <- names(data)[1] # For bp_stages function
 
-        # Adjust Diastolic Blood Pressure (DBP)
+        # Adjust DBP
         data <- dbp_adj(data = data, dbp = dbp, data_screen = data_screen, DUL = DUL, DLL = DLL)
-        dbp_tmp <- names(data)[2] # For bp_stages function
 
         # Adjust ID
         data <- id_adj(data = data, id = id)
 
         # Adjust Group
         data <- group_adj(data = data, group = group)
-
 
         # Adjust Visit
         data <- visit_adj(data = data, visit = visit)
@@ -373,22 +372,23 @@ process_data <- function(data,
 
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
-        #+++++++++++++++++++++++++++++++++++#
-        # KEEP THIS ORDER: RPP, PP, MAP, HR #
-        #+++++++++++++++++++++++++++++++++++#
-
         # Adjust Heart Rate (HR)
         data <- hr_adj(data = data, hr = hr, data_screen = data_screen, HRUL = HRUL, HRLL = HRLL)
-
-        # Adjust Rate Pressure Product (RPP)
-        data <- rpp_adj(data = data, rpp = rpp)
 
         # Adjust Pulse Pressure (PP)
         data <- pp_adj(data = data, pp = pp)
 
+        # Adjust Rate Pressure Product (RPP)
+        data <- rpp_adj(data = data, rpp = rpp)
+
         # Adjust Mean Arterial Pressure (MAP)
         data <- map_adj(data = data, map = map)
 
+
+        # Relocate HR to after DBP column
+        if("HR" %in% colnames(data)){
+          data <- data %>% dplyr::relocate(HR, .after = DBP)
+        }
 
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
@@ -399,27 +399,25 @@ process_data <- function(data,
 
         }
 
-
-        # BP Stages
+        # SBP Adjustment, DBP Adjustment, and BP Stages
         data <- bp_stages(data = data,
-                          sbp = sbp_tmp,
-                          dbp = dbp_tmp,
+                          sbp = sbp,
+                          dbp = dbp,
                           inc_low = inc_low,
                           inc_crisis = inc_crisis,
                           data_screen = data_screen,
                           SUL = SUL,
                           SLL = SLL,
                           DUL = DUL,
-                          DLL = DLL)
+                          DLL = DLL,
+                          adj_sbp_dbp = FALSE)
 
 
         # Move Classification columns to correct positions
         data <- data %>%
-                  dplyr::relocate(BP_CLASS, .after = DBP) #%>%
-                  #dplyr::relocate(SBP_CATEGORY, .after = BP_CLASS) %>%
-                  #dplyr::relocate(DBP_CATEGORY, .after = SBP_CATEGORY)
-
-
+          dplyr::relocate(BP_CLASS, .after = DBP) #%>%
+        #dplyr::relocate(SBP_CATEGORY, .after = BP_CLASS) %>%
+        #dplyr::relocate(DBP_CATEGORY, .after = SBP_CATEGORY)
 
   }
 

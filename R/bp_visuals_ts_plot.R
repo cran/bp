@@ -39,10 +39,26 @@
 #' @param wrap_col An optional argument specifying how many columnss to wrap the plots if \code{wrap_var}
 #' is specified.
 #'
-#' @return A list with a plot for each ID. If the data contains a DATE_TIME column (and index
-#' is not specified), two lists will be returned: one corresponding to the DATE_TIME plots for
-#' the values over its unique point in time, and another corresponding to the HOUR plots which
-#' show repeated measurements by HOUR.
+#' @param method (ggplot2 plotting arguments) Smoothing method (function) to use. Default is NULL,
+#' but also accepts a character vector "lm", "glm", "gam", "loess". NULL implies that the
+#' smoothing method will be chosen automatically based on the size of the largest group.
+#'
+#' See \url{https://ggplot2.tidyverse.org/reference/geom_smooth.html} for more details.
+#'
+#' @param formula (ggplot2 plotting arguments) Formula to use in smoothing function. Default is NULL
+#' implying y ~ x for fewer than 1,000 observations and y ~ x(x, bs = "cs") otherwise.
+#'
+#' See \url{https://ggplot2.tidyverse.org/reference/geom_smooth.html} for more details.
+#'
+#' @return If the data does not contain a DATE_TIME column, a single list will be
+#' returned with the time-dependent plots for each subject ID. If the data does contain a DATE_TIME
+#' column (and index is not specified), a list of two lists will be returned for each subject ID:
+#' one corresponding to the time-dependent plots (according to the DATE_TIME values), and another
+#' plot corresponding to the HOUR plots which show repeated measurements of BP values throughout
+#' a 24-hour period. The index of the output therefore corresponds to whether there is only the
+#' time-dependent plot type (the former situation) or there are both time-dependent and hourly
+#' plot types (the latter situation).
+#'
 #'
 #' @export
 #'
@@ -80,8 +96,8 @@
 #'                                           dbp = 'diast',
 #'                                     date_time = 'date.time')
 #'
-#' bp::bp_ts_plots(data_hypnos, wrap_var = 'visit')
-bp_ts_plots <- function(data, index = NULL, subj = NULL, first_hour = 0, rotate_xlab = FALSE, wrap_var = NULL, wrap_row = NULL, wrap_col = NULL){
+#' bp::bp_ts_plots(data_hypnos, wrap_var = 'visit', subj = '70435')
+bp_ts_plots <- function(data, index = NULL, subj = NULL, first_hour = 0, rotate_xlab = FALSE, wrap_var = NULL, wrap_row = NULL, wrap_col = NULL, method = NULL, formula = NULL){
 
   # All data sets must have ID, SBP, DBP
   # Data must have either DATE or DATE_TIME, or else an 'index' column if not
@@ -200,13 +216,13 @@ bp_ts_plots <- function(data, index = NULL, subj = NULL, first_hour = 0, rotate_
                            ggplot2::geom_point(ggplot2::aes(y = SBP), col = 'blue') +
 
                            # If there is enough data, plot a smoothed non-parametric LOESS line for SBP
-                           ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), method = "loess", col = 'blue') +
+                           ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), formula = formula, method = method, col = 'blue') +
 
                            # Plot the DBP values in red
                            ggplot2::geom_point(ggplot2::aes(y = DBP), col = 'red') +
 
                            # If there is enough data, plot a smoothed non-parametric LOESS line for DBP
-                           ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), method = "loess", col = 'red') +
+                           ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), formula = formula, method = method, col = 'red') +
 
                            # Rotate x axis writing if rotate_xlab = TRUE
                            {if (rotate_xlab == TRUE) ggplot2::theme(axis.text.x = ggplot2::element_text(angle=90)) } +
@@ -337,14 +353,14 @@ bp_ts_plots <- function(data, index = NULL, subj = NULL, first_hour = 0, rotate_
                           ggplot2::geom_point(ggplot2::aes(y = SBP), col = 'blue') +
 
                           # If there is enough data, plot a smoothed non-parametric LOESS line for SBP
-                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), method = "loess", col = 'blue') +
+                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), formula = formula, method = method, col = 'blue') +
 
                           # Plot the DBP values in red
                           ggplot2::geom_point(ggplot2::aes(y = DBP), col = 'red') +
 
                           # If there is enough data, plot a smoothed non-parametric LOESS line for DBP
-                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), method = "loess", col = 'red') +
-                          #ggplot2::geom_smooth(ggplot2::aes(x = index, y = DBP), method = "loess", col = 'red') +
+                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), formula = formula, method = method, col = 'red') +
+                          #ggplot2::geom_smooth(ggplot2::aes(x = index, y = DBP), method = method, col = 'red') +
 
                           # Rotate x axis writing if rotate_xlab = TRUE
                           {if (rotate_xlab == TRUE) ggplot2::theme(axis.text.x = ggplot2::element_text(angle=90)) } +
@@ -369,13 +385,13 @@ bp_ts_plots <- function(data, index = NULL, subj = NULL, first_hour = 0, rotate_
                           ggplot2::geom_point(ggplot2::aes(y = SBP), col = 'blue') +
 
                           # Plot a smooth non-parametric LOESS curve for SBP
-                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), method = "loess", col = 'blue')  +
+                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), formula = formula, method = method, col = 'blue')  +
 
                           # Plot the DBP values in red
                           ggplot2::geom_point(ggplot2::aes(y = DBP), col = 'red') +
 
                           # Plot a smooth non-parametric LOESS curve for DBP
-                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), method = "loess", col = 'red')  +
+                          ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), formula = formula, method = method, col = 'red')  +
 
                           # Rotate x axis writing if rotate_xlab = TRUE
                           #{if (rotate_xlab == TRUE) ggplot2::theme(axis.text.x = ggplot2::element_text(angle=90)) } +
@@ -459,14 +475,14 @@ bp_ts_plots <- function(data, index = NULL, subj = NULL, first_hour = 0, rotate_
             ggplot2::geom_point(ggplot2::aes(y = SBP), col = 'blue') +
 
             # If there is enough data, plot a smoothed non-parametric LOESS line for SBP
-            ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), method = "loess", col = 'blue') +
+            ggplot2::geom_smooth(ggplot2::aes(group = "", y = SBP), formula = formula, method = method, col = 'blue') +
 
             # Plot the DBP values in red
             ggplot2::geom_point(ggplot2::aes(y = DBP), col = 'red') +
 
             # If there is enough data, plot a smoothed non-parametric LOESS line for DBP
-            ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), method = "loess", col = 'red') +
-            #ggplot2::geom_smooth(ggplot2::aes(x = index, y = DBP), method = "loess", col = 'red') +
+            ggplot2::geom_smooth(ggplot2::aes(group = "", y = DBP), formula = formula, method = method, col = 'red') +
+            #ggplot2::geom_smooth(ggplot2::aes(x = index, y = DBP), method = method, col = 'red') +
 
             # Rotate x axis writing if rotate_xlab = TRUE
             {if (rotate_xlab == TRUE) ggplot2::theme(axis.text.x = ggplot2::element_text(angle=90)) } +

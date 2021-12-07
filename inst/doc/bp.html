@@ -506,17 +506,18 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb1-14"><a href="#cb1-14"></a>                     <span class="dt">wake =</span> <span class="st">&#39;wake&#39;</span>,</span>
 <span id="cb1-15"><a href="#cb1-15"></a>                     <span class="dt">pp =</span> <span class="st">&#39;pp&#39;</span>,</span>
 <span id="cb1-16"><a href="#cb1-16"></a>                     <span class="dt">map =</span> <span class="st">&#39;map&#39;</span>,</span>
-<span id="cb1-17"><a href="#cb1-17"></a>                     <span class="dt">rpp =</span> <span class="st">&#39;rpp&#39;</span>)</span></code></pre></div>
+<span id="cb1-17"><a href="#cb1-17"></a>                     <span class="dt">rpp =</span> <span class="st">&#39;rpp&#39;</span>)</span>
+<span id="cb1-18"><a href="#cb1-18"></a><span class="co">#&gt; 2 values that exceeded the DUL or DLL thresholds were coerced to NA.</span></span></code></pre></div>
 <p>Notice how the column names of the original <code>bp_hypnos</code> changed in the processed <code>data</code>. Notably, <code>SYST</code> became <code>SBP</code>, <code>DIAST</code> became <code>DBP</code>, and <code>DATE.TIME</code> became <code>DATE_TIME</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">names</span>(bp_hypnos)</span>
 <span id="cb2-2"><a href="#cb2-2"></a><span class="co">#&gt;  [1] &quot;NR.&quot;       &quot;DATE.TIME&quot; &quot;SYST&quot;      &quot;MAP&quot;       &quot;DIAST&quot;     &quot;HR&quot;       </span></span>
 <span id="cb2-3"><a href="#cb2-3"></a><span class="co">#&gt;  [7] &quot;PP&quot;        &quot;RPP&quot;       &quot;WAKE&quot;      &quot;ID&quot;        &quot;VISIT&quot;     &quot;DATE&quot;</span></span>
 <span id="cb2-4"><a href="#cb2-4"></a><span class="kw">names</span>(hypnos_proc)</span>
-<span id="cb2-5"><a href="#cb2-5"></a><span class="co">#&gt;  [1] &quot;SBP&quot;          &quot;DBP&quot;          &quot;BP_CLASS&quot;     &quot;ID&quot;           &quot;GROUP&quot;       </span></span>
-<span id="cb2-6"><a href="#cb2-6"></a><span class="co">#&gt;  [6] &quot;DATE_TIME&quot;    &quot;YEAR&quot;         &quot;MONTH&quot;        &quot;DAY&quot;          &quot;HOUR&quot;        </span></span>
-<span id="cb2-7"><a href="#cb2-7"></a><span class="co">#&gt; [11] &quot;TIME_OF_DAY&quot;  &quot;MAP&quot;          &quot;PP&quot;           &quot;RPP&quot;          &quot;HR&quot;          </span></span>
-<span id="cb2-8"><a href="#cb2-8"></a><span class="co">#&gt; [16] &quot;WAKE&quot;         &quot;VISIT&quot;        &quot;NR.&quot;          &quot;DATE&quot;         &quot;DAY_OF_WEEK&quot; </span></span>
-<span id="cb2-9"><a href="#cb2-9"></a><span class="co">#&gt; [21] &quot;SBP_CATEGORY&quot; &quot;DBP_CATEGORY&quot; &quot;BP_TYPE&quot;</span></span></code></pre></div>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="co">#&gt;  [1] &quot;ID&quot;           &quot;GROUP&quot;        &quot;DATE_TIME&quot;    &quot;DATE&quot;         &quot;DAY_OF_WEEK&quot; </span></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="co">#&gt;  [6] &quot;YEAR&quot;         &quot;MONTH&quot;        &quot;DAY&quot;          &quot;HOUR&quot;         &quot;TIME_OF_DAY&quot; </span></span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="co">#&gt; [11] &quot;SBP&quot;          &quot;DBP&quot;          &quot;BP_CLASS&quot;     &quot;HR&quot;           &quot;MAP&quot;         </span></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="co">#&gt; [16] &quot;MAP_OLD&quot;      &quot;RPP&quot;          &quot;PP&quot;           &quot;PP_OLD&quot;       &quot;WAKE&quot;        </span></span>
+<span id="cb2-9"><a href="#cb2-9"></a><span class="co">#&gt; [21] &quot;VISIT&quot;        &quot;NR.&quot;          &quot;SBP_CATEGORY&quot; &quot;DBP_CATEGORY&quot; &quot;BP_TYPE&quot;</span></span></code></pre></div>
 <p>While the results seem to be trivial at first glance, let’s see what happens when we use a much different data set with a completely different naming convention: the <code>bp_jhs</code> data set. Unlike <code>bp_hypnos</code> which has all of the available columns needed in the <code>process_data</code> function with multiple subjects, <code>bp_jhs</code> is a single-subject data set without many of the multi-subject identifiers such as <code>ID</code>, <code>VISIT</code>, or <code>WAKE</code> (as it is non-ABPM data). Further, there is no <code>MAP</code> or <code>PP</code> column, but these (as we will see) can be automatically created.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co">## Load the sample bp_jhs data set</span></span>
 <span id="cb3-2"><a href="#cb3-2"></a><span class="co">## As before, this is what will be referred to as the &quot;user-supplied&quot; data set</span></span>
@@ -528,38 +529,39 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb3-8"><a href="#cb3-8"></a>                     <span class="dt">dbp =</span> <span class="st">&#39;dias.mmhg.&#39;</span>,</span>
 <span id="cb3-9"><a href="#cb3-9"></a>                     <span class="dt">date_time =</span> <span class="st">&#39;datetime&#39;</span>,</span>
 <span id="cb3-10"><a href="#cb3-10"></a>                     <span class="dt">hr =</span> <span class="st">&#39;PULSE.BPM.&#39;</span>)</span>
-<span id="cb3-11"><a href="#cb3-11"></a><span class="co">#&gt; No RPP column found. Automatically generated from SBP and HR columns.</span></span>
-<span id="cb3-12"><a href="#cb3-12"></a><span class="co">#&gt; No PP column found. Automatically generated from SBP and DBP columns.</span></span>
-<span id="cb3-13"><a href="#cb3-13"></a><span class="co">#&gt; No MAP column found. Automatically generated from SBP and DBP columns.</span></span>
-<span id="cb3-14"><a href="#cb3-14"></a><span class="kw">head</span>(jhs_proc, <span class="dv">5</span>)</span>
-<span id="cb3-15"><a href="#cb3-15"></a><span class="co">#&gt;   SBP DBP BP_CLASS ID GROUP           DATE_TIME       DATE DAY_OF_WEEK YEAR</span></span>
-<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt; 1 132  80  Stage 1  1     1 2019-08-01 09:15:54 2019-08-01         Thu 2019</span></span>
-<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt; 2 126  77 Elevated  1     1 2019-07-31 11:39:59 2019-07-31         Wed 2019</span></span>
-<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt; 3 128  76 Elevated  1     1 2019-07-31 11:38:07 2019-07-31         Wed 2019</span></span>
-<span id="cb3-19"><a href="#cb3-19"></a><span class="co">#&gt; 4 130  81  Stage 1  1     1 2019-07-30 13:47:46 2019-07-30         Tue 2019</span></span>
-<span id="cb3-20"><a href="#cb3-20"></a><span class="co">#&gt; 5 134  83  Stage 1  1     1 2019-07-30 13:46:15 2019-07-30         Tue 2019</span></span>
-<span id="cb3-21"><a href="#cb3-21"></a><span class="co">#&gt;   MONTH DAY HOUR TIME_OF_DAY       MAP PP   RPP HR DAYOFWK MEAL_TIME BPDELTA</span></span>
-<span id="cb3-22"><a href="#cb3-22"></a><span class="co">#&gt; 1     8   1    9     Morning  97.33333 52 10428 79     Thu Breakfast      52</span></span>
-<span id="cb3-23"><a href="#cb3-23"></a><span class="co">#&gt; 2     7  31   11     Morning  93.33333 49  7812 62     Wed Breakfast      49</span></span>
-<span id="cb3-24"><a href="#cb3-24"></a><span class="co">#&gt; 3     7  31   11     Morning  93.33333 52  7680 60     Wed Breakfast      52</span></span>
-<span id="cb3-25"><a href="#cb3-25"></a><span class="co">#&gt; 4     7  30   13   Afternoon  97.33333 49  8190 63     Tue     Lunch      49</span></span>
-<span id="cb3-26"><a href="#cb3-26"></a><span class="co">#&gt; 5     7  30   13   Afternoon 100.00000 51  8308 62     Tue     Lunch      51</span></span>
-<span id="cb3-27"><a href="#cb3-27"></a><span class="co">#&gt;   SBP_CATEGORY DBP_CATEGORY BP_TYPE</span></span>
-<span id="cb3-28"><a href="#cb3-28"></a><span class="co">#&gt; 1      Stage 1      Stage 1    HBPM</span></span>
-<span id="cb3-29"><a href="#cb3-29"></a><span class="co">#&gt; 2     Elevated       Normal    HBPM</span></span>
-<span id="cb3-30"><a href="#cb3-30"></a><span class="co">#&gt; 3     Elevated       Normal    HBPM</span></span>
-<span id="cb3-31"><a href="#cb3-31"></a><span class="co">#&gt; 4      Stage 1      Stage 1    HBPM</span></span>
-<span id="cb3-32"><a href="#cb3-32"></a><span class="co">#&gt; 5      Stage 1      Stage 1    HBPM</span></span></code></pre></div>
+<span id="cb3-11"><a href="#cb3-11"></a><span class="co">#&gt; DATE column created from DATE_TIME column.</span></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="co">#&gt; No PP column found or specified. Automatically generated from SBP and DBP columns.</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="co">#&gt; No RPP column found or specified. Automatically generated from SBP and HR columns.</span></span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="co">#&gt; No MAP column found or specified. Automatically generated from SBP and DBP columns.</span></span>
+<span id="cb3-15"><a href="#cb3-15"></a><span class="kw">head</span>(jhs_proc, <span class="dv">5</span>)</span>
+<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt;   ID GROUP           DATE_TIME       DATE DAY_OF_WEEK YEAR MONTH DAY HOUR</span></span>
+<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt; 1  1     1 2019-08-01 09:15:54 2019-08-01         Thu 2019     8   1    9</span></span>
+<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt; 2  1     1 2019-07-31 11:39:59 2019-07-31         Wed 2019     7  31   11</span></span>
+<span id="cb3-19"><a href="#cb3-19"></a><span class="co">#&gt; 3  1     1 2019-07-31 11:38:07 2019-07-31         Wed 2019     7  31   11</span></span>
+<span id="cb3-20"><a href="#cb3-20"></a><span class="co">#&gt; 4  1     1 2019-07-30 13:47:46 2019-07-30         Tue 2019     7  30   13</span></span>
+<span id="cb3-21"><a href="#cb3-21"></a><span class="co">#&gt; 5  1     1 2019-07-30 13:46:15 2019-07-30         Tue 2019     7  30   13</span></span>
+<span id="cb3-22"><a href="#cb3-22"></a><span class="co">#&gt;   TIME_OF_DAY SBP DBP BP_CLASS HR       MAP   RPP PP DAYOFWK MEAL_TIME BPDELTA</span></span>
+<span id="cb3-23"><a href="#cb3-23"></a><span class="co">#&gt; 1     Morning 132  80  Stage 1 79  97.33333 10428 52     Thu Breakfast      52</span></span>
+<span id="cb3-24"><a href="#cb3-24"></a><span class="co">#&gt; 2     Morning 126  77 Elevated 62  93.33333  7812 49     Wed Breakfast      49</span></span>
+<span id="cb3-25"><a href="#cb3-25"></a><span class="co">#&gt; 3     Morning 128  76 Elevated 60  93.33333  7680 52     Wed Breakfast      52</span></span>
+<span id="cb3-26"><a href="#cb3-26"></a><span class="co">#&gt; 4   Afternoon 130  81  Stage 1 63  97.33333  8190 49     Tue     Lunch      49</span></span>
+<span id="cb3-27"><a href="#cb3-27"></a><span class="co">#&gt; 5   Afternoon 134  83  Stage 1 62 100.00000  8308 51     Tue     Lunch      51</span></span>
+<span id="cb3-28"><a href="#cb3-28"></a><span class="co">#&gt;   SBP_CATEGORY DBP_CATEGORY BP_TYPE</span></span>
+<span id="cb3-29"><a href="#cb3-29"></a><span class="co">#&gt; 1      Stage 1      Stage 1    HBPM</span></span>
+<span id="cb3-30"><a href="#cb3-30"></a><span class="co">#&gt; 2     Elevated       Normal    HBPM</span></span>
+<span id="cb3-31"><a href="#cb3-31"></a><span class="co">#&gt; 3     Elevated       Normal    HBPM</span></span>
+<span id="cb3-32"><a href="#cb3-32"></a><span class="co">#&gt; 4      Stage 1      Stage 1    HBPM</span></span>
+<span id="cb3-33"><a href="#cb3-33"></a><span class="co">#&gt; 5      Stage 1      Stage 1    HBPM</span></span></code></pre></div>
 <p>After a quick inspection of the original <code>bp_jhs</code> data set and the newly processed <code>data</code> data set, it should be evident that there was a lot going on “under the hood” of the <code>process_data</code> function. As we can see from the column names, the awkward nuisance of typing <code>sys.mmhg.</code>, <code>dias.mmhg.</code>, <code>pulse.bpm.</code>, and <code>datetime</code> have now been replaced with the more concise <code>SBP</code>, <code>DBP</code>, <code>HR</code>, and <code>DATE_TIME</code> names, respectively. Additionally, <code>MAP</code>, <code>PP</code>, <code>RPP</code>, <code>SBP_Category</code>, and <code>DBP_Category</code> were all calculated as additional columns which previously did not exist in the data. Additionally, if the supplied data has a column corresponding to a “date/time” format, the columns <code>Time_of_Day</code> and <code>DAY_OF_WEEK</code> will also be created for ease.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">names</span>(bp_jhs)</span>
 <span id="cb4-2"><a href="#cb4-2"></a><span class="co">#&gt;  [1] &quot;DateTime&quot;   &quot;Month&quot;      &quot;Day&quot;        &quot;Year&quot;       &quot;DayofWk&quot;   </span></span>
 <span id="cb4-3"><a href="#cb4-3"></a><span class="co">#&gt;  [6] &quot;Hour&quot;       &quot;Meal_Time&quot;  &quot;Sys.mmHg.&quot;  &quot;Dias.mmHg.&quot; &quot;bpDelta&quot;   </span></span>
 <span id="cb4-4"><a href="#cb4-4"></a><span class="co">#&gt; [11] &quot;Pulse.bpm.&quot;</span></span>
 <span id="cb4-5"><a href="#cb4-5"></a><span class="kw">names</span>(jhs_proc)</span>
-<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt;  [1] &quot;SBP&quot;          &quot;DBP&quot;          &quot;BP_CLASS&quot;     &quot;ID&quot;           &quot;GROUP&quot;       </span></span>
-<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt;  [6] &quot;DATE_TIME&quot;    &quot;DATE&quot;         &quot;DAY_OF_WEEK&quot;  &quot;YEAR&quot;         &quot;MONTH&quot;       </span></span>
-<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; [11] &quot;DAY&quot;          &quot;HOUR&quot;         &quot;TIME_OF_DAY&quot;  &quot;MAP&quot;          &quot;PP&quot;          </span></span>
-<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; [16] &quot;RPP&quot;          &quot;HR&quot;           &quot;DAYOFWK&quot;      &quot;MEAL_TIME&quot;    &quot;BPDELTA&quot;     </span></span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt;  [1] &quot;ID&quot;           &quot;GROUP&quot;        &quot;DATE_TIME&quot;    &quot;DATE&quot;         &quot;DAY_OF_WEEK&quot; </span></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt;  [6] &quot;YEAR&quot;         &quot;MONTH&quot;        &quot;DAY&quot;          &quot;HOUR&quot;         &quot;TIME_OF_DAY&quot; </span></span>
+<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; [11] &quot;SBP&quot;          &quot;DBP&quot;          &quot;BP_CLASS&quot;     &quot;HR&quot;           &quot;MAP&quot;         </span></span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; [16] &quot;RPP&quot;          &quot;PP&quot;           &quot;DAYOFWK&quot;      &quot;MEAL_TIME&quot;    &quot;BPDELTA&quot;     </span></span>
 <span id="cb4-10"><a href="#cb4-10"></a><span class="co">#&gt; [21] &quot;SBP_CATEGORY&quot; &quot;DBP_CATEGORY&quot; &quot;BP_TYPE&quot;</span></span></code></pre></div>
 <p><strong>NOTE:</strong> For consistency, <code>process_data</code> will coerce all column names to upper-case.</p>
 </div>
@@ -672,40 +674,44 @@ In an effort to better understand the factors that influence hypertension and ca
 </ul>
 <p>Let’s say we are working with the <code>bp_hypnos</code> and would like to compare the time-dependent nature of the <code>bp_arv</code> with the <code>bp_sv</code> for each subject.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">head</span>(<span class="kw">bp_arv</span>(hypnos_proc))</span>
-<span id="cb5-2"><a href="#cb5-2"></a><span class="co">#&gt; # A tibble: 6 x 6</span></span>
-<span id="cb5-3"><a href="#cb5-3"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
-<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#&gt;   ID    VISIT WAKE  ARV_SBP ARV_DBP     N</span></span>
-<span id="cb5-5"><a href="#cb5-5"></a><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;int&gt;</span></span>
-<span id="cb5-6"><a href="#cb5-6"></a><span class="co">#&gt; 1 70417 1     0       14.2    10.6     10</span></span>
-<span id="cb5-7"><a href="#cb5-7"></a><span class="co">#&gt; 2 70417 1     1        9.58    5.47    20</span></span>
-<span id="cb5-8"><a href="#cb5-8"></a><span class="co">#&gt; 3 70417 2     0       17.7     7.57     8</span></span>
-<span id="cb5-9"><a href="#cb5-9"></a><span class="co">#&gt; 4 70417 2     1       11.2     8.12    17</span></span>
-<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; 5 70422 1     0       10.5     4        5</span></span>
-<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; 6 70422 1     1       14.9     6.62    17</span></span>
-<span id="cb5-12"><a href="#cb5-12"></a><span class="kw">head</span>(<span class="kw">bp_sv</span>(hypnos_proc))</span>
-<span id="cb5-13"><a href="#cb5-13"></a><span class="co">#&gt; # A tibble: 6 x 6</span></span>
-<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
-<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt;   ID    VISIT WAKE  SV_SBP SV_DBP     N</span></span>
-<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;</span></span>
-<span id="cb5-17"><a href="#cb5-17"></a><span class="co">#&gt; 1 70417 1     0       15.8  13       10</span></span>
-<span id="cb5-18"><a href="#cb5-18"></a><span class="co">#&gt; 2 70417 1     1       11.2   7.50    20</span></span>
-<span id="cb5-19"><a href="#cb5-19"></a><span class="co">#&gt; 3 70417 2     0       18.9   8.22     8</span></span>
-<span id="cb5-20"><a href="#cb5-20"></a><span class="co">#&gt; 4 70417 2     1       13.0  10.2     17</span></span>
-<span id="cb5-21"><a href="#cb5-21"></a><span class="co">#&gt; 5 70422 1     0       11.2   5.74     5</span></span>
-<span id="cb5-22"><a href="#cb5-22"></a><span class="co">#&gt; 6 70422 1     1       19.1   8.80    17</span></span></code></pre></div>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="co">#&gt; # A tibble: 6 x 6</span></span>
+<span id="cb5-4"><a href="#cb5-4"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
+<span id="cb5-5"><a href="#cb5-5"></a><span class="co">#&gt;   ID    VISIT WAKE  ARV_SBP ARV_DBP     N</span></span>
+<span id="cb5-6"><a href="#cb5-6"></a><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;int&gt;</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a><span class="co">#&gt; 1 70417 1     0       14.2    10.6     10</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a><span class="co">#&gt; 2 70417 1     1        9.58    5.47    20</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a><span class="co">#&gt; 3 70417 2     0       17.7     7.57     8</span></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; 4 70417 2     1       11.2     8.12    17</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; 5 70422 1     0       10.5     4        5</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a><span class="co">#&gt; 6 70422 1     1       14.9     6.62    17</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="kw">head</span>(<span class="kw">bp_sv</span>(hypnos_proc))</span>
+<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
+<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt; # A tibble: 6 x 6</span></span>
+<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
+<span id="cb5-17"><a href="#cb5-17"></a><span class="co">#&gt;   ID    VISIT WAKE  SV_SBP SV_DBP     N</span></span>
+<span id="cb5-18"><a href="#cb5-18"></a><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt;</span></span>
+<span id="cb5-19"><a href="#cb5-19"></a><span class="co">#&gt; 1 70417 1     0       15.8  13       10</span></span>
+<span id="cb5-20"><a href="#cb5-20"></a><span class="co">#&gt; 2 70417 1     1       11.2   7.50    20</span></span>
+<span id="cb5-21"><a href="#cb5-21"></a><span class="co">#&gt; 3 70417 2     0       18.9   8.22     8</span></span>
+<span id="cb5-22"><a href="#cb5-22"></a><span class="co">#&gt; 4 70417 2     1       13.0  10.2     17</span></span>
+<span id="cb5-23"><a href="#cb5-23"></a><span class="co">#&gt; 5 70422 1     0       11.2   5.74     5</span></span>
+<span id="cb5-24"><a href="#cb5-24"></a><span class="co">#&gt; 6 70422 1     1       19.1   8.80    17</span></span></code></pre></div>
 <p>Comparing vertically can be challenging, so with some help from <code>dplyr</code> we can obtain the following:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">head</span>(dplyr<span class="op">::</span><span class="kw">left_join</span>(<span class="kw">bp_arv</span>(hypnos_proc), <span class="kw">bp_cv</span>(hypnos_proc)))</span>
-<span id="cb6-2"><a href="#cb6-2"></a><span class="co">#&gt; Joining, by = c(&quot;ID&quot;, &quot;VISIT&quot;, &quot;WAKE&quot;, &quot;N&quot;)</span></span>
-<span id="cb6-3"><a href="#cb6-3"></a><span class="co">#&gt; # A tibble: 6 x 10</span></span>
-<span id="cb6-4"><a href="#cb6-4"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
-<span id="cb6-5"><a href="#cb6-5"></a><span class="co">#&gt;   ID    VISIT WAKE  ARV_SBP ARV_DBP     N CV_SBP CV_DBP SD_SBP SD_DBP</span></span>
-<span id="cb6-6"><a href="#cb6-6"></a><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;</span></span>
-<span id="cb6-7"><a href="#cb6-7"></a><span class="co">#&gt; 1 70417 1     0       14.2    10.6     10   9.54  16.3   11.8    9.86</span></span>
-<span id="cb6-8"><a href="#cb6-8"></a><span class="co">#&gt; 2 70417 1     1        9.58    5.47    20   6.63   7.65   8.49   5.09</span></span>
-<span id="cb6-9"><a href="#cb6-9"></a><span class="co">#&gt; 3 70417 2     0       17.7     7.57     8   9.46  12.3   12.9    7.43</span></span>
-<span id="cb6-10"><a href="#cb6-10"></a><span class="co">#&gt; 4 70417 2     1       11.2     8.12    17   8.44  11.5   11.5    7.56</span></span>
-<span id="cb6-11"><a href="#cb6-11"></a><span class="co">#&gt; 5 70422 1     0       10.5     4        5   5.21   7.02   7.22   4.09</span></span>
-<span id="cb6-12"><a href="#cb6-12"></a><span class="co">#&gt; 6 70422 1     1       14.9     6.62    17   9.86  11.5   14.9    7.59</span></span></code></pre></div>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
+<span id="cb6-4"><a href="#cb6-4"></a><span class="co">#&gt; Joining, by = c(&quot;ID&quot;, &quot;VISIT&quot;, &quot;WAKE&quot;, &quot;N&quot;)</span></span>
+<span id="cb6-5"><a href="#cb6-5"></a><span class="co">#&gt; # A tibble: 6 x 10</span></span>
+<span id="cb6-6"><a href="#cb6-6"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
+<span id="cb6-7"><a href="#cb6-7"></a><span class="co">#&gt;   ID    VISIT WAKE  ARV_SBP ARV_DBP     N CV_SBP CV_DBP SD_SBP SD_DBP</span></span>
+<span id="cb6-8"><a href="#cb6-8"></a><span class="co">#&gt;   &lt;fct&gt; &lt;fct&gt; &lt;fct&gt;   &lt;dbl&gt;   &lt;dbl&gt; &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;</span></span>
+<span id="cb6-9"><a href="#cb6-9"></a><span class="co">#&gt; 1 70417 1     0       14.2    10.6     10   9.54  16.3   11.8    9.86</span></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="co">#&gt; 2 70417 1     1        9.58    5.47    20   6.63   7.65   8.49   5.09</span></span>
+<span id="cb6-11"><a href="#cb6-11"></a><span class="co">#&gt; 3 70417 2     0       17.7     7.57     8   9.46  12.3   12.9    7.43</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a><span class="co">#&gt; 4 70417 2     1       11.2     8.12    17   8.44  11.5   11.5    7.56</span></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="co">#&gt; 5 70422 1     0       10.5     4        5   5.21   7.02   7.22   4.09</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a><span class="co">#&gt; 6 70422 1     1       14.9     6.62    17   9.86  11.5   14.9    7.59</span></span></code></pre></div>
 <p>Note that this is possible thanks to the work we did in standardizing column names from the processing step.</p>
 <p>Because the <code>hypnos_proc</code> data contains BP readings during sleep, sleep-specific metrics through the <code>bp_sleep_metrics</code> function can be used to garner further insight:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">bp_sleep_metrics</span>(hypnos_proc)</span>
@@ -717,8 +723,8 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb7-7"><a href="#cb7-7"></a><span class="co">#&gt;  2 70417 2     1          25     17       8       16         8</span></span>
 <span id="cb7-8"><a href="#cb7-8"></a><span class="co">#&gt;  3 70422 1     1          22     17       5       16         5</span></span>
 <span id="cb7-9"><a href="#cb7-9"></a><span class="co">#&gt;  4 70422 2     1          21     14       7       11         7</span></span>
-<span id="cb7-10"><a href="#cb7-10"></a><span class="co">#&gt;  5 70424 1     1          25     20       5       16         4</span></span>
-<span id="cb7-11"><a href="#cb7-11"></a><span class="co">#&gt;  6 70424 2     1          22     17       5       16         5</span></span>
+<span id="cb7-10"><a href="#cb7-10"></a><span class="co">#&gt;  5 70424 1     1          26     20       6       16         5</span></span>
+<span id="cb7-11"><a href="#cb7-11"></a><span class="co">#&gt;  6 70424 2     1          23     17       6       16         6</span></span>
 <span id="cb7-12"><a href="#cb7-12"></a><span class="co">#&gt;  7 70435 1     1          29     23       6       17         6</span></span>
 <span id="cb7-13"><a href="#cb7-13"></a><span class="co">#&gt;  8 70435 2     1          29     20       9       16         7</span></span>
 <span id="cb7-14"><a href="#cb7-14"></a><span class="co">#&gt;  9 70439 1     1          22     14       8       13         8</span></span>
@@ -733,8 +739,8 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb7-23"><a href="#cb7-23"></a><span class="co">#&gt;  2 70417 2     1          136.     136.        12.9        11.5          140 </span></span>
 <span id="cb7-24"><a href="#cb7-24"></a><span class="co">#&gt;  3 70422 1     1          139.     151.         7.22       14.9          148 </span></span>
 <span id="cb7-25"><a href="#cb7-25"></a><span class="co">#&gt;  4 70422 2     1          125.     152.        13.5        16.7          132.</span></span>
-<span id="cb7-26"><a href="#cb7-26"></a><span class="co">#&gt;  5 70424 1     1          108      128.        14.6        13.3          126 </span></span>
-<span id="cb7-27"><a href="#cb7-27"></a><span class="co">#&gt;  6 70424 2     1          116      123.         5.10       15.6          132 </span></span>
+<span id="cb7-26"><a href="#cb7-26"></a><span class="co">#&gt;  5 70424 1     1          110.     128.        14.2        13.3          128.</span></span>
+<span id="cb7-27"><a href="#cb7-27"></a><span class="co">#&gt;  6 70424 2     1          113      123.         8.65       15.6          132 </span></span>
 <span id="cb7-28"><a href="#cb7-28"></a><span class="co">#&gt;  7 70435 1     1          106.     129.        10.7        10.2          145 </span></span>
 <span id="cb7-29"><a href="#cb7-29"></a><span class="co">#&gt;  8 70435 2     1          136.     123.         9.55       14.7          144.</span></span>
 <span id="cb7-30"><a href="#cb7-30"></a><span class="co">#&gt;  9 70439 1     1          167      160.         7.09       15.1          159 </span></span>
@@ -751,7 +757,7 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb7-41"><a href="#cb7-41"></a><span class="co">#&gt;  2 70417 2     1          60.5     65.6         7.43        7.56         74.5</span></span>
 <span id="cb7-42"><a href="#cb7-42"></a><span class="co">#&gt;  3 70422 1     1          58.2     65.9         4.09        7.59         70.5</span></span>
 <span id="cb7-43"><a href="#cb7-43"></a><span class="co">#&gt;  4 70422 2     1          60.6     69.5         6.40        7.75         64  </span></span>
-<span id="cb7-44"><a href="#cb7-44"></a><span class="co">#&gt;  5 70424 1     1          54.6     67.8         7.99        8.31         60  </span></span>
+<span id="cb7-44"><a href="#cb7-44"></a><span class="co">#&gt;  5 70424 1     1          54.6     67.8         7.99        8.31         55  </span></span>
 <span id="cb7-45"><a href="#cb7-45"></a><span class="co">#&gt;  6 70424 2     1          55       61.5         8           6.98         69  </span></span>
 <span id="cb7-46"><a href="#cb7-46"></a><span class="co">#&gt;  7 70435 1     1          63       82.1         6.42        6.55         92  </span></span>
 <span id="cb7-47"><a href="#cb7-47"></a><span class="co">#&gt;  8 70435 2     1          79.2     72.5         8.61        8.13         79.5</span></span>
@@ -769,8 +775,8 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb7-59"><a href="#cb7-59"></a><span class="co">#&gt;  2 70417 2     1         -0.00450         1.09        -9         -22.5 </span></span>
 <span id="cb7-60"><a href="#cb7-60"></a><span class="co">#&gt;  3 70422 1     1          0.0819          1.09         4.17        5.5 </span></span>
 <span id="cb7-61"><a href="#cb7-61"></a><span class="co">#&gt;  4 70422 2     1          0.174           1.05        35.7        33.7 </span></span>
-<span id="cb7-62"><a href="#cb7-62"></a><span class="co">#&gt;  5 70424 1     1          0.160           1.22         1.33        1.33</span></span>
-<span id="cb7-63"><a href="#cb7-63"></a><span class="co">#&gt;  6 70424 2     1          0.0605          1.12         3.67        7   </span></span>
+<span id="cb7-62"><a href="#cb7-62"></a><span class="co">#&gt;  5 70424 1     1          0.141           1.24         1.33        1.33</span></span>
+<span id="cb7-63"><a href="#cb7-63"></a><span class="co">#&gt;  6 70424 2     1          0.0848          1.21        11.7         7   </span></span>
 <span id="cb7-64"><a href="#cb7-64"></a><span class="co">#&gt;  7 70435 1     1          0.179           1.37        11          11.5 </span></span>
 <span id="cb7-65"><a href="#cb7-65"></a><span class="co">#&gt;  8 70435 2     1         -0.104           1.06        -4.5        -8.90</span></span>
 <span id="cb7-66"><a href="#cb7-66"></a><span class="co">#&gt;  9 70439 1     1         -0.0442          0.995       19.2         9   </span></span>
