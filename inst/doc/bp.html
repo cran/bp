@@ -673,7 +673,7 @@ In an effort to better understand the factors that influence hypertension and ca
 </ul></li>
 </ul>
 <p>Let’s say we are working with the <code>bp_hypnos</code> and would like to compare the time-dependent nature of the <code>bp_arv</code> with the <code>bp_sv</code> for each subject.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">head</span>(<span class="kw">bp_arv</span>(hypnos_proc))</span>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">head</span>(<span class="kw">bp_arv</span>(hypnos_proc, <span class="dt">bp_type =</span> <span class="st">&#39;both&#39;</span>))</span>
 <span id="cb5-2"><a href="#cb5-2"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
 <span id="cb5-3"><a href="#cb5-3"></a><span class="co">#&gt; # A tibble: 6 x 6</span></span>
 <span id="cb5-4"><a href="#cb5-4"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
@@ -685,7 +685,7 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; 4 70417 2     1       11.2     8.12    17</span></span>
 <span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; 5 70422 1     0       10.5     4        5</span></span>
 <span id="cb5-12"><a href="#cb5-12"></a><span class="co">#&gt; 6 70422 1     1       14.9     6.62    17</span></span>
-<span id="cb5-13"><a href="#cb5-13"></a><span class="kw">head</span>(<span class="kw">bp_sv</span>(hypnos_proc))</span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="kw">head</span>(<span class="kw">bp_sv</span>(hypnos_proc, <span class="dt">bp_type =</span> <span class="st">&#39;both&#39;</span>))</span>
 <span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
 <span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt; # A tibble: 6 x 6</span></span>
 <span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt; # Groups:   ID, VISIT [3]</span></span>
@@ -698,7 +698,7 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb5-23"><a href="#cb5-23"></a><span class="co">#&gt; 5 70422 1     0       11.2   5.74     5</span></span>
 <span id="cb5-24"><a href="#cb5-24"></a><span class="co">#&gt; 6 70422 1     1       19.1   8.80    17</span></span></code></pre></div>
 <p>Comparing vertically can be challenging, so with some help from <code>dplyr</code> we can obtain the following:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">head</span>(dplyr<span class="op">::</span><span class="kw">left_join</span>(<span class="kw">bp_arv</span>(hypnos_proc), <span class="kw">bp_cv</span>(hypnos_proc)))</span>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">head</span>(dplyr<span class="op">::</span><span class="kw">left_join</span>(<span class="kw">bp_arv</span>(hypnos_proc, <span class="dt">bp_type =</span> <span class="st">&#39;both&#39;</span>), <span class="kw">bp_cv</span>(hypnos_proc, <span class="dt">bp_type =</span> <span class="st">&#39;both&#39;</span>)))</span>
 <span id="cb6-2"><a href="#cb6-2"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
 <span id="cb6-3"><a href="#cb6-3"></a><span class="co">#&gt; Missing SBP and/or DBP values found in data set. Removing for calculation.</span></span>
 <span id="cb6-4"><a href="#cb6-4"></a><span class="co">#&gt; Joining, by = c(&quot;ID&quot;, &quot;VISIT&quot;, &quot;WAKE&quot;, &quot;N&quot;)</span></span>
@@ -785,13 +785,13 @@ In an effort to better understand the factors that influence hypertension and ca
 <span id="cb7-69"><a href="#cb7-69"></a><span class="co">#&gt; #   wSD_SBP &lt;dbl&gt;, dip_calc_DBP &lt;dbl&gt;, noct_fall_DBP &lt;dbl&gt;, ST_mbps_DBP &lt;dbl&gt;,</span></span>
 <span id="cb7-70"><a href="#cb7-70"></a><span class="co">#&gt; #   PW_mbps_DBP &lt;dbl&gt;, ME_DBP_avg &lt;dbl&gt;, ME_DBP_diff &lt;dbl&gt;, wSD_DBP &lt;dbl&gt;</span></span></code></pre></div>
 <p>Turning back to the <code>bp_jhs</code> data set, let’s examine the peaks and troughs of the BP readings. We would call the <code>bp_mag</code> function on our data.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">head</span>(<span class="kw">bp_mag</span>(jhs_proc))</span>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">head</span>(<span class="kw">bp_mag</span>(jhs_proc, <span class="dt">bp_type =</span> <span class="st">&#39;both&#39;</span>))</span>
 <span id="cb8-2"><a href="#cb8-2"></a><span class="co">#&gt; # A tibble: 1 x 6</span></span>
 <span id="cb8-3"><a href="#cb8-3"></a><span class="co">#&gt;   ID    Peak_SBP Peak_DBP Trough_SBP Trough_DBP     N</span></span>
 <span id="cb8-4"><a href="#cb8-4"></a><span class="co">#&gt;   &lt;fct&gt;    &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt; &lt;int&gt;</span></span>
 <span id="cb8-5"><a href="#cb8-5"></a><span class="co">#&gt; 1 1         20.3     15.1       19.7       17.9   222</span></span></code></pre></div>
 <p>Here, we notice something different. Because there weren’t <code>ID</code>, <code>VISIT</code>, or <code>WAKE</code> columns, the <code>bp_mag</code> aggregated everything together. This is technically correct, but say we wanted to glean more information by breaking our data down by <code>DATE</code> instead; we would need to include the <code>inc_date = TRUE</code> optional argument to the function.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="kw">tail</span>(<span class="kw">bp_mag</span>(jhs_proc, <span class="dt">inc_date =</span> <span class="ot">TRUE</span>))</span>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="kw">tail</span>(<span class="kw">bp_mag</span>(jhs_proc, <span class="dt">inc_date =</span> <span class="ot">TRUE</span>, <span class="dt">bp_type =</span> <span class="st">&#39;both&#39;</span>))</span>
 <span id="cb9-2"><a href="#cb9-2"></a><span class="co">#&gt; # A tibble: 6 x 7</span></span>
 <span id="cb9-3"><a href="#cb9-3"></a><span class="co">#&gt; # Groups:   ID [1]</span></span>
 <span id="cb9-4"><a href="#cb9-4"></a><span class="co">#&gt;   ID    DATE       Peak_SBP Peak_DBP Trough_SBP Trough_DBP     N</span></span>

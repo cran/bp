@@ -47,20 +47,20 @@ names(bp_jhs)
 names(jhs_proc)
 
 ## -----------------------------------------------------------------------------
-head(bp_arv(hypnos_proc))
-head(bp_sv(hypnos_proc))
+head(bp_arv(hypnos_proc, bp_type = 'both'))
+head(bp_sv(hypnos_proc, bp_type = 'both'))
 
 ## -----------------------------------------------------------------------------
-head(dplyr::left_join(bp_arv(hypnos_proc), bp_cv(hypnos_proc)))
+head(dplyr::left_join(bp_arv(hypnos_proc, bp_type = 'both'), bp_cv(hypnos_proc, bp_type = 'both')))
 
 ## -----------------------------------------------------------------------------
 bp_sleep_metrics(hypnos_proc)
 
 ## -----------------------------------------------------------------------------
-head(bp_mag(jhs_proc))
+head(bp_mag(jhs_proc, bp_type = 'both'))
 
 ## -----------------------------------------------------------------------------
-tail(bp_mag(jhs_proc, inc_date = TRUE))
+tail(bp_mag(jhs_proc, inc_date = TRUE, bp_type = 'both'))
 
 ## ----fig1a, fig.height = 2.5, fig.width = 5.5, fig.align = "center", results = FALSE, message = FALSE----
 bp_hist(jhs_proc)

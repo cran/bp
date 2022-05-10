@@ -12,6 +12,10 @@
 #' value or a vector of elements. The input type should be character, but the function will
 #' comply with integers so long as they are all present in the \code{ID} column of the data.
 #'
+#' @param bins An integer specifying how many bins to use for histogram plots. This is a ggplot parameter; default value set to 30
+#'
+#' @param na.rm An logical value specifying whether or not to remove empty values from data frame.
+#' This is a ggplot parameter; default value set to TRUE.
 #'
 #' @return A list containing four objects: three histogram visual graphics corresponding to
 #' the SBP / DBP totals, SBP frequency, and DBP frequency, and a fourth list element
@@ -45,15 +49,16 @@
 #'
 #' bp_hist(hyp_proc)
 #' bp_hist(jhs_proc)
-bp_hist <- function(data, subj = NULL){
+bp_hist <- function(data, subj = NULL, bins = 30, na.rm = TRUE){
 
 
   # Primary variables needed: SBP, DBP, SBP_Category, DBP_Category
-  # Assumes bp_type = 0 (both) and bp_tables parameters as defaults
+  # Assumes bp_type = 'both', 'sbp', or 'dbp' and bp_tables parameters as defaults
   # Packages: ggplots2, cowplot
 
-  SBP = DBP = SBP_CATEGORY = DBP_CATEGORY = Category = n = bp_type = ID = NULL
-  rm(list = c("SBP", "DBP", "SBP_CATEGORY", "DBP_CATEGORY", "Category", "n", "bp_type", "ID"))
+  # Initialize variables
+  SBP = DBP = SBP_CATEGORY = DBP_CATEGORY = Category = n = ID = NULL
+  rm(list = c("SBP", "DBP", "SBP_CATEGORY", "DBP_CATEGORY", "Category", "n", "ID"))
 
 
   # If user supplies a vector corresponding to a subset of multiple subjects (multi-subject only)
@@ -135,7 +140,7 @@ bp_hist <- function(data, subj = NULL){
   sbp_cols <- bpcols[names(bpcols) %in% unique(data$SBP_CATEGORY)]
 
   hist2 <- ggplot(data = data, aes(x = SBP, fill = SBP_CATEGORY)) +
-    geom_histogram(position = "identity", alpha = 0.65, color = 'gray57') +
+    geom_histogram(position = "identity", alpha = 0.65, color = 'gray57', bins = bins, na.rm = na.rm) +
     ggtitle("Frequency of SBP Readings") +
     ylab("Freq") +
     scale_fill_manual(values = sbp_cols, na.value = 'black') +
@@ -149,7 +154,7 @@ bp_hist <- function(data, subj = NULL){
   dbp_cols <- bpcols[names(bpcols) %in% unique(data$DBP_CATEGORY)]
 
   hist3 <- ggplot(data = data, aes(x = DBP, fill = DBP_CATEGORY)) +
-    geom_histogram(position = "identity", alpha = 0.65, color = 'gray57')+
+    geom_histogram(position = "identity", alpha = 0.65, color = 'gray57', bins = bins, na.rm = na.rm)+
     ggtitle("Frequency of DBP Readings") +
     ylab("Freq") +
     scale_fill_manual(values = dbp_cols, na.value = 'black') +

@@ -1,7 +1,7 @@
 Package: bp
 Type: Package
 Title: Blood Pressure Analysis in R
-Version: 2.0.1
+Version: 2.1.0
 Authors@R: c(person("John","Schwenck", email = "jschwenck12@gmail.com", role = c("aut", "cre")),
             person("Irina", "Gaynanova",
             email = "irinag@stat.tamu.edu",role = c("aut"),
@@ -21,8 +21,8 @@ Suggests: knitr, rmarkdown, png
 VignetteBuilder: knitr
 Language: en-US
 NeedsCompilation: no
-Packaged: 2021-12-07 04:15:02 UTC; John
+Packaged: 2022-05-10 15:25:56 UTC; John
 Author: John Schwenck [aut, cre],
   Irina Gaynanova [aut] (<https://orcid.org/0000-0002-4116-0268>)
 Repository: CRAN
-Date/Publication: 2021-12-07 05:50:02 UTC
+Date/Publication: 2022-05-10 15:50:02 UTC
